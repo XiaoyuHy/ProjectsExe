@@ -20,9 +20,7 @@ def cov_areal(areal_coordinate, sigma, w, b=1., OMEGA = 1e-6):
     covAreas = np.hstack(cov_areas).reshape(num_areas,num_areas) + np.diag(np.repeat(OMEGA, num_areas))
     return covAreas
 
-#average covranice between two areas
-def avg_cov_two_areal(x, y, sigma, w, b=1.):
-    # compute the K_star for n_test test points
+def cov_mat_xy(x, y, sigma, w):
     w = np.array(w)
     if len(w) == 1:
         w = np.repeat(w, x.shape[1])
@@ -39,7 +37,19 @@ def avg_cov_two_areal(x, y, sigma, w, b=1.):
     
     square_dist = tmp1.reshape(n_x, 1) + tmp2.reshape(1, n_y) - 2 * tmp3
 
-    cov_of_two_vec = sigma * np.exp(- 0.5 * square_dist) # is a matrix of size (n_train, n_test)
+    cov_of_two_vec = sigma * np.exp(- 0.5 * square_dist) # is a matrix of size (n_train, n_y)
+    return cov_of_two_vec
+
+def avg_cov_point_areal(x, y, sigma, w, b=1.):
+    cov_of_two_vec = cov_mat_xy(x, y, sigma, w)
+    avg_cov_point_areal = b * np.mean(cov_of_two_vec, axis=1)
+    return avg_cov_point_areal
+
+#average covranice between two areas
+def avg_cov_two_areal(x, y, sigma, w, b=1.):
+    n_x = x.shape[0]
+    n_y = y.shape[0]
+    cov_of_two_vec = cov_mat_xy(x, y, sigma, w)
     avg = b**2 * np.float(np.sum(cov_of_two_vec))/(n_x * n_y)
     return avg
 
@@ -76,18 +86,27 @@ def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, OMEGA = 1e-6)
     log_obs_noi_scale = theta[-1]
     # b = theta[-1]
 
-    n_hatZs = X_hatZs.shape[0]   
-    C_hatZs = gpGaussLikeFuns.cov_matrix_reg(X = X_hatZs, sigma = np.exp(log_sigma), w = np.exp(log_w), obs_noi_scale = np.exp(log_obs_noi_scale))
-    l_chol_C_hatZs = gpGaussLikeFuns.compute_L_chol(C_hatZs)
-    u_hatZs = linalg.solve_triangular(l_chol_C_hatZs.T, linalg.solve_triangular(l_chol_C_hatZs, y_hatZs, lower=True))     
-    log_like_hatZs  = -np.sum(np.log(np.diag(l_chol_C_hatZs))) - 0.5 * np.dot(y_hatZs,u_hatZs) - 0.5 * n_hatZs * np.log(2*np.pi)    
+    n_hatZs = X_hatZs.shape[0]
+    n_tildZs = X_tildZs.shape[0]  
+    n_bothZs = n_hatZs + n_tildZs
 
-    n_tildZs = X_tildZs.shape[0]   
+    mat = np.zeros(n_bothZs * n_bothZs).reshape(n_bothZs, n_bothZs)
+
+    C_hatZs = gpGaussLikeFuns.cov_matrix_reg(X = X_hatZs, sigma = np.exp(log_sigma), w = np.exp(log_w), obs_noi_scale = np.exp(log_obs_noi_scale))
     C_tildZs = cov_areal(areal_coordinate = X_tildZs, sigma = np.exp(log_sigma), w = np.exp(log_w))
-    l_chol_C_tildZs = gpGaussLikeFuns.compute_L_chol(C_tildZs)
-    u_tildZs = linalg.solve_triangular(l_chol_C_tildZs.T, linalg.solve_triangular(l_chol_C_tildZs, y_tildZs, lower=True))     
-    log_like_tildZs  = -np.sum(np.log(np.diag(l_chol_C_tildZs))) - 0.5 * np.dot(y_tildZs, u_tildZs) - 0.5 * n_tildZs * np.log(2*np.pi) 
-    joint_log_like = log_like_hatZs + log_like_tildZs
+
+    mat[:n_hatZs, :n_hatZs] = C_hatZs
+    mat[n_hatZs:n_hatZs + n_tildZs, n_hatZs:n_hatZs + n_tildZs] = C_tildZs
+    
+    point_areal = np.array([avg_cov_point_areal(X_hatZs, X_tildZs[i], sigma = np.exp(log_sigma), w = np.exp(log_w)) for i in range(n_tildZs)])
+    mat[n_hatZs:n_hatZs + n_tildZs, :n_hatZs] = point_areal
+    mat[:n_hatZs, n_hatZs:n_hatZs + n_tildZs] = point_areal.T
+
+    y = np.concatenate((y_hatZs, y_tildZs))
+
+    l_chol_C = gpGaussLikeFuns.compute_L_chol(mat)
+    u = linalg.solve_triangular(l_chol_C.T, linalg.solve_triangular(l_chol_C, y, lower=True))     
+    joint_log_like  = -np.sum(np.log(np.diag(l_chol_C))) - 0.5 * np.dot(y, u) - 0.5 * n_bothZs * np.log(2*np.pi) 
 
     #compute the likelihood of the gamma priors
     num_len_scal = len(log_w)
@@ -101,28 +120,6 @@ def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, OMEGA = 1e-6)
 
     #compute the logarithm of the posterior
     log_pos = joint_log_like + log_prior
-
-    return log_pos
-
-def log_pos_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs,  OMEGA = 1e-6):
-    theta = np.array(theta)
-    #adding parameters of sigma
-    log_sigma = theta[0]
-    log_w = theta[1:-1]
-    log_obs_noi_scale = theta[-1]
-    log_like_par = log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs)
-
-    num_len_scal = len(log_w)
-    sigma_shape = 1.2 
-    sigma_rate = 0.2 
-    len_scal_shape = 1. 
-    len_scal_rate = 1./np.sqrt(num_len_scal)
-    obs_noi_scale_shape = 1.2
-    obs_noi_scale_rate = 0.6
-    log_prior = log_like_gamma(log_sigma, sigma_rate, sigma_shape) + log_like_gamma(log_w, len_scal_shape, len_scal_rate) +  log_like_gamma(log_obs_noi_scale, obs_noi_scale_shape, obs_noi_scale_rate)
-
-
-    log_pos = log_like_par + log_prior
 
     return log_pos
 
@@ -141,19 +138,28 @@ def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, OMEGA =
     log_obs_noi_scale = theta[-1]
     # b = theta[-1]
 
-    n_hatZs = X_hatZs.shape[0]   
+    n_hatZs = X_hatZs.shape[0]
+    n_tildZs = X_tildZs.shape[0]  
+    n_bothZs = n_hatZs + n_tildZs
+
+    mat = np.zeros(n_bothZs * n_bothZs).reshape(n_bothZs, n_bothZs)
+
     C_hatZs = gpGaussLikeFuns.cov_matrix_reg(X = X_hatZs, sigma = np.exp(log_sigma), w = np.exp(log_w), obs_noi_scale = np.exp(log_obs_noi_scale))
-    l_chol_C_hatZs = gpGaussLikeFuns.compute_L_chol(C_hatZs)
-    u_hatZs = linalg.solve_triangular(l_chol_C_hatZs.T, linalg.solve_triangular(l_chol_C_hatZs, y_hatZs, lower=True))     
-    log_like_hatZs  = -np.sum(np.log(np.diag(l_chol_C_hatZs))) - 0.5 * np.dot(y_hatZs,u_hatZs) - 0.5 * n_hatZs * np.log(2*np.pi)    
-
-    n_tildZs = X_tildZs.shape[0]   
     C_tildZs = cov_areal(areal_coordinate = X_tildZs, sigma = np.exp(log_sigma), w = np.exp(log_w))
-    l_chol_C_tildZs = gpGaussLikeFuns.compute_L_chol(C_tildZs)
-    u_tildZs = linalg.solve_triangular(l_chol_C_tildZs.T, linalg.solve_triangular(l_chol_C_tildZs, y_tildZs, lower=True))     
-    log_like_tildZs  = -np.sum(np.log(np.diag(l_chol_C_tildZs))) - 0.5 * np.dot(y_tildZs, u_tildZs) - 0.5 * n_tildZs * np.log(2*np.pi) 
 
-    joint_log_like = log_like_hatZs + log_like_tildZs
+    mat[:n_hatZs, :n_hatZs] = C_hatZs
+    mat[n_hatZs:n_hatZs + n_tildZs, n_hatZs:n_hatZs + n_tildZs] = C_tildZs
+    
+    point_areal = np.array([avg_cov_point_areal(X_hatZs, X_tildZs[i], sigma = np.exp(log_sigma), w = np.exp(log_w)) for i in range(n_tildZs)])
+
+    mat[n_hatZs:n_hatZs + n_tildZs, :n_hatZs] = point_areal
+    mat[:n_hatZs, n_hatZs:n_hatZs + n_tildZs] = point_areal.T
+
+    y = np.concatenate((y_hatZs, y_tildZs))
+
+    l_chol_C = gpGaussLikeFuns.compute_L_chol(mat)
+    u = linalg.solve_triangular(l_chol_C.T, linalg.solve_triangular(l_chol_C, y, lower=True))     
+    joint_log_like  = -np.sum(np.log(np.diag(l_chol_C))) - 0.5 * np.dot(y, u) - 0.5 * n_bothZs * np.log(2*np.pi) 
 
     #compute the likelihood of the gamma priors
     num_len_scal = len(log_w)
@@ -163,7 +169,7 @@ def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, OMEGA =
     len_scal_rate = 1./np.sqrt(num_len_scal)
     obs_noi_scale_shape = 1.2
     obs_noi_scale_rate = 0.6
-    log_prior = log_like_gamma(log_sigma, sigma_rate, sigma_shape) + log_like_gamma(log_w, len_scal_shape, len_scal_rate) + log_like_gamma(log_obs_noi_scale, obs_noi_scale_shape, obs_noi_scale_rate)
+    log_prior = log_like_gamma(log_sigma, sigma_rate, sigma_shape) + log_like_gamma(log_w, len_scal_shape, len_scal_rate) +  log_like_gamma(log_obs_noi_scale, obs_noi_scale_shape, obs_noi_scale_rate)
 
     #compute the logarithm of the posterior
     log_pos = joint_log_like + log_prior
@@ -317,7 +323,7 @@ if __name__ == '__main__':
     X_hatZs, y_hatZs, X_tildZs, y_tildZs = read_Sim_Data()
     start = default_timer()
     tmp = MH_estimator(X_hatZs, y_hatZs, X_tildZs, y_tildZs)
-    size = 1100
+    size = 800
     proposal ='fullApproxCov'
     mod, mu, std = tmp.estimate(size=size, proposal = proposal)
     end = default_timer()
@@ -325,6 +331,8 @@ if __name__ == '__main__':
     print 'estimated mod of parameters is ' + str(mod)
     print 'estimated mean of parameters is ' + str(mu)
     print 'estimated std of parameters is ' + str(std)
+
+
  
     
     
