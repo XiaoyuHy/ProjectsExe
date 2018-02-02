@@ -362,3 +362,61 @@ estimated mod of parameters is ModeResult(mode=array([[ 1.03211381],
        [14]]))
 estimated mean of parameters is [ 1.23970644  1.01466868  0.0970893 ]
 estimated std of parameters is [ 0.48844974  0.06105857  0.005257  ]
+
+02/02/2018: reconstructed the correct joint covariance matrix of hat(Zs) and tild(Zs) Ð including the point-areal covariance
+
+The 1 round of optimisation
+minus_log_like for repeat 1 is [array(-975.156382054081)]
+log_parameters after optimisation is :[-0.20403088 -0.01235269 -2.31489561]
+parameters after optimisation is :[ 0.81543719  0.98772329  0.0987765 ]
+covariance of log_pars after optimisation is :[[ 0.1644554   0.01228192 -0.00486493]
+ [ 0.01228192  0.00321375 -0.00061426]
+ [-0.00486493 -0.00061426  0.00173876]]
+diag of the hess_inv is [ 0.1644554   0.00321375  0.00173876]
+Acc_Rate for the 0 iteration is 0.48
+Acc_Rate for the 1 iteration is 0.46
+Acc_Rate for the 2 iteration is 0.36
+log_parameters after burningin is :[ 0.28948546  0.09935994 -2.18764083]
+parameters after burningin is :[ 1.33574002  1.10446377  0.11218109]
+cov of log_pars after burningin is :[[ 0.25696156  0.01919051 -0.00760145]
+ [ 0.01919051  0.00502148 -0.00095978]
+ [-0.00760145 -0.00095978  0.00271682]]
+Acc_Rate:0.36
+running time for MH estimation of size 100 is 1183.4768641 seconds
+estimated mod of parameters is ModeResult(mode=array([[ 0.88722114],
+       [ 0.97830377],
+       [ 0.10232392]]), count=array([[11],
+       [11],
+       [11]]))
+estimated mean of parameters is [ 1.19460793  1.01371403  0.10129725]
+estimated std of parameters is [ 0.41275385  0.04938694  0.00519894]
+
+The 1 round of optimisation
+minus_log_like for repeat 1 is [array(-975.1569778821785)]
+log_parameters after optimisation is :[-0.17531122 -0.00984558 -2.31500635]
+parameters after optimisation is :[ 0.8391958   0.99020273  0.09876556]
+covariance of log_pars after optimisation is :[[ 0.00177285 -0.00143904 -0.00140339]
+ [-0.00143904  0.00116811  0.00113915]
+ [-0.00140339  0.00113915  0.00111094]]
+diag of the hess_inv is [ 0.00177285  0.00116811  0.00111094]
+Acc_Rate for the 0 iteration is 0.7
+Acc_Rate for the 1 iteration is 0.65
+Acc_Rate for the 2 iteration is 0.61
+Acc_Rate for the 3 iteration is 0.64
+Acc_Rate for the 4 iteration is 0.52
+Acc_Rate for the 5 iteration is 0.53
+Acc_Rate for the 6 iteration is 0.36
+log_parameters after burningin is :[-0.14736398 -0.03092465 -2.33647107]
+parameters after burningin is :[ 0.86297981  0.96954863  0.09666817]
+cov of log_pars after burningin is :[[ 0.00676289 -0.00548952 -0.00535352]
+ [-0.00548952  0.00445597  0.00434552]
+ [-0.00535352  0.00434552  0.00423788]]
+Acc_Rate:0.446
+running time for MH estimation of size 1000 is 2723.12205815 seconds
+estimated mod of parameters is ModeResult(mode=array([[ 0.84569585],
+       [ 0.98158122],
+       [ 0.0980405 ]]), count=array([[11],
+       [11],
+       [11]]))
+estimated mean of parameters is [ 0.8375149   0.98791847  0.09894402]
+estimated std of parameters is [ 0.03168682  0.03003853  0.00292954]
