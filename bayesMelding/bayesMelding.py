@@ -12,6 +12,7 @@ from timeit import default_timer
 from scipy import integrate
 import argparse
 import os
+import simData
 
 #covariance matrix between areas
 def cov_areal(areal_coordinate, sigma, w, b=2., OMEGA = 1e-6):
@@ -83,12 +84,12 @@ def log_like_gamma(w, shape, rate):
     res = np.sum(shape * w - rate * np.exp(w) + shape * np.log(rate) - np.log(gamma(shape)))
     return res
 
-def fun_a_bias(lat, lon, a_bias_coefficients):
+def fun_a_bias(x, a_bias_coefficients = [0.1, 5., 5.]):
     a_bias_coefficients = np.array(a_bias_coefficients)
-    a_bias = np.dot(a_bias_coefficients, np.array([1., lat, lon]))
+    a_bias = np.dot(a_bias_coefficients, np.concatenate(([1.], x)))
     return a_bias
 
-def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, latLon_tildZs, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
+def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
@@ -125,7 +126,7 @@ def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, latLon_tildZs
     mat[:n_hatZs, n_hatZs:n_hatZs + n_tildZs] = point_areal.T
 
     mu_hatZs = np.zeros(len(y_hatZs))
-    mu_tildZs = np.array([integrate.nquad(fun_a_bias, latLon_tildZs[i], args = (a_bias_coefficients, ))[0] for i in range(len(latLon_tildZs))])
+    mu_tildZs = np.array([fun_a_bias(np.mean(X_tildZs[i], axis=0)) for i in range(len(y_tildZs))])
     mu_hatTildZs = np.concatenate((mu_hatZs, mu_tildZs))
 
     y = np.concatenate((y_hatZs, y_tildZs))
@@ -155,7 +156,7 @@ def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, latLon_tildZs
 
     return log_pos
 
-def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, latLon_tildZs, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
+def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
@@ -192,7 +193,7 @@ def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, latLon_
     mat[:n_hatZs, n_hatZs:n_hatZs + n_tildZs] = point_areal.T
 
     mu_hatZs = np.zeros(len(y_hatZs))
-    mu_tildZs = np.array([integrate.nquad(fun_a_bias, latLon_tildZs[i], args = (a_bias_coefficients, ))[0] for i in range(len(latLon_tildZs))])
+    mu_tildZs = np.array([fun_a_bias(np.mean(X_tildZs[i], axis=0)) for i in range(len(y_tildZs))])
     mu_hatTildZs = np.concatenate((mu_hatZs, mu_tildZs))
 
     y = np.concatenate((y_hatZs, y_tildZs))
@@ -223,7 +224,7 @@ def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, latLon_
 
     return minus_log_pos
 
-def optimize(X_hatZs, y_hatZs, X_tildZs, y_tildZs, latLon_tildZs, repeat=3, method='BFGS', rbf=True, OMEGA = 1e-6):
+def optimize(X_hatZs, y_hatZs, X_tildZs, y_tildZs, repeat=1, method='BFGS', rbf=True, OMEGA = 1e-6):
     if rbf:
         num_par=1
     else:
@@ -239,7 +240,7 @@ def optimize(X_hatZs, y_hatZs, X_tildZs, y_tildZs, latLon_tildZs, repeat=3, meth
             tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
                            x0=initial_theta, method=method,
                            jac=False,
-                           args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, latLon_tildZs),
+                           args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs),
                            options={'maxiter': 100, 'disp': False})
             print 'The ' + str(count + 1) + ' round of optimisation'
         except:
@@ -379,6 +380,7 @@ if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument('-SEED', type=int, dest='SEED', default=0, help='The simulation index')
     p.add_argument('-o', type=str, dest='output', default=None, help='Output folder')
+    p.add_argument('-REPEAT', type=int, dest='repeat', default=1, help='number of repeats in optimisation')
     args = p.parse_args()
     if args.output is None: args.output = os.getcwd()
     output_folder = args.output + '/SEED_' + str(args.SEED) 
@@ -387,9 +389,9 @@ if __name__ == '__main__':
     output_folder += '/'
     print 'Output: ' + output_folder
     #sim_hatTildZs_With_Plots()
-    X_hatZs, y_hatZs, X_tildZs, y_tildZs, latLon_tildZs = read_Sim_Data(SEED = args.SEED)
+    X_hatZs, y_hatZs, X_tildZs, y_tildZs = simData.sim_hatTildZs_With_Plots(SEED = args.SEED)
     start = default_timer()
-    mu, cov = optimize(X_hatZs, y_hatZs, X_tildZs, y_tildZs, latLon_tildZs)
+    mu, cov = optimize(X_hatZs, y_hatZs, X_tildZs, y_tildZs, repeat = args.repeat)
     mu_out = open(output_folder + 'mu.pickle', 'wb')
     pickle.dump(mu, mu_out)
     mu_out.close()
