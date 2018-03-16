@@ -12,17 +12,20 @@ from timeit import default_timer
 from scipy import integrate
 import argparse
 import os
-import simData1
+import simData
 from sklearn import linear_model
 
 #covariance matrix between areas
-def cov_areal(areal_coordinate, sigma, w, b=2., OMEGA = 1e-6):
+def cov_areal(areal_coordinate, sigma, w, b, sigma_deltas_of_modelOut, OMEGA = 1e-6):
     num_areas = len(areal_coordinate)
+    num_points_per_area = len(areal_coordinate[0])
+
     cov_areas = []
     for i in range(num_areas):
         tmp = [avg_cov_two_areal(areal_coordinate[i], areal_coordinate[j], sigma, w, b) for j in range(num_areas)]
         cov_areas.append(tmp)
-    covAreas = np.hstack(cov_areas).reshape(num_areas,num_areas) + np.diag(np.repeat(OMEGA, num_areas))
+    covAreas = np.hstack(cov_areas).reshape(num_areas,num_areas) + np.diag(np.repeat(OMEGA + \
+        sigma_deltas_of_modelOut * 1./num_points_per_area, num_areas))
     return covAreas
 
 def cov_mat_xy(x, y, sigma, w):
@@ -51,29 +54,12 @@ def avg_cov_point_areal(x, y, sigma, w, b=2.):
     return avg_cov_point_areal
 
 #average covranice between two areas
-def avg_cov_two_areal(x, y, sigma, w, b=2.):
+def avg_cov_two_areal(x, y, sigma, w, b):
     n_x = x.shape[0]
     n_y = y.shape[0]
     cov_of_two_vec = cov_mat_xy(x, y, sigma, w)
-    avg = b**2 * np.float(np.sum(cov_of_two_vec))/(n_x * n_y)
+    avg = b**2 * np.float(np.sum(cov_of_two_vec))/(n_x * n_y) 
     return avg
-
-def read_Sim_Data(SEED):
-    #read the samples of hatZs
-    X_hatZs = np.array(pd.read_csv('simDataFiles/X_hatZs_res100_a_bias_poly_deg2SEED' + str(SEED) + '.txt', sep=" ", header=None))
-    y_hatZs = np.array(pd.read_csv('simDataFiles/y_hatZs_res100_a_bias_poly_deg2SEED' + str(SEED) + '.txt', sep=" ", header=None)).reshape(X_hatZs.shape[0])
-
-    #read the samples of tildZs
-    X_tildZs_in = open('simDataFiles/X_tildZs_a_bias_poly_deg2SEED' + str(SEED) + '.pickle', 'rb')
-    X_tildZs = pickle.load(X_tildZs_in)
-
-    y_tildZs_in = open('simDataFiles/y_tildZs_a_bias_poly_deg2SEED' + str(SEED) + '.pickle', 'rb')
-    y_tildZs = pickle.load(y_tildZs_in)
-
-    latLon_tildZs_in = open('simDataFiles/latLon_tildZs_a_bias_poly_deg2SEED' + str(SEED) + '.pickle', 'rb')
-    latLon_tildZs = pickle.load(latLon_tildZs_in)
-
-    return[X_hatZs, y_hatZs, X_tildZs, y_tildZs, latLon_tildZs]
 
 def log_like_normal(w, mu, Sigma):
     l_chol = np.linalg.cholesky(Sigma)
@@ -90,25 +76,29 @@ def fun_a_bias(x, a_bias_coefficients = [5., 5., 0.1]):
     a_bias = np.dot(a_bias_coefficients, np.concatenate((x, [1.])))
     return a_bias
 
-def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior= False, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
+def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior= False, gp_deltas_modelOut = False, \
+    a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
     else:
         num_len_scal = X_hatZs.shape(1)
-    #only one lengthsacle parameter
-    # log_w = theta
-
-    #adding parameters of sigma
-    # log_sigma = theta[0]
-    # log_w = theta[1:]
-
-    #adding parameters of sigma, obs_noi_scale, multiplicative bias b
-    log_sigma = theta[0]
-    log_w = theta[1:num_len_scal+1]
-    log_obs_noi_scale = theta[num_len_scal+1:num_len_scal+2]
-    b = theta[num_len_scal+2:num_len_scal+3]
-    a_bias_coefficients = theta[len(theta) -(a_bias_poly_deg+1):]
+    if gp_deltas_modelOut:
+        log_sigma_Zs = theta[0] #sigma of GP function for Zs
+        log_phi_Zs = theta[1:num_len_scal+1]  # length scale of GP function for Zs
+        log_obs_noi_scale = theta[num_len_scal+1:num_len_scal+2]
+        log_sigma_deltas_of_modelOut = theta[num_len_scal+2:num_len_scal+3] # sigma of GP function for deltas of model output
+        log_phi_deltas_of_modelOut = theta[num_len_scal+3:num_len_scal+3 + num_len_scal]  # length scale of GP function for for deltas of model output
+        b = theta[num_len_scal+3 + num_len_scal:num_len_scal+3 + num_len_scal+1]
+        a_bias_coefficients = theta[len(theta) - (a_bias_poly_deg+1):]
+        
+    else:
+        log_sigma_Zs = theta[0] #sigma of GP function for Zs
+        log_phi_Zs = theta[1:num_len_scal+1]  # length scale of GP function for Zs
+        log_obs_noi_scale = theta[num_len_scal+1:num_len_scal+2]
+        log_sigma_deltas_of_modelOut = theta[num_len_scal+2:num_len_scal+3] # sigma of Normal for deltas of model output
+        b = theta[num_len_scal+3:num_len_scal+4]
+        a_bias_coefficients = theta[len(theta) - (a_bias_poly_deg+1):]
 
     n_hatZs = X_hatZs.shape[0]
     n_tildZs = X_tildZs.shape[0]  
@@ -116,13 +106,18 @@ def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior= Fa
 
     mat = np.zeros(n_bothZs * n_bothZs).reshape(n_bothZs, n_bothZs)
 
-    C_hatZs = gpGaussLikeFuns.cov_matrix_reg(X = X_hatZs, sigma = np.exp(log_sigma), w = np.exp(log_w), obs_noi_scale = np.exp(log_obs_noi_scale))
-    C_tildZs = cov_areal(areal_coordinate = X_tildZs, sigma = np.exp(log_sigma), w = np.exp(log_w), b=b)
+    C_hatZs = gpGaussLikeFuns.cov_matrix_reg(X = X_hatZs, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), obs_noi_scale = np.exp(log_obs_noi_scale))
+    if gp_deltas_modelOut:
+        C_tildZs = cov_areal(areal_coordinate = X_tildZs, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), b=b, \
+            sigma_deltas_of_modelOut = np.exe(log_sigma_deltas_of_modelOut))
+    else:
+        C_tildZs = cov_areal(areal_coordinate = X_tildZs, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), b=b, \
+            sigma_deltas_of_modelOut = np.exe(log_sigma_deltas_of_modelOut))
 
     mat[:n_hatZs, :n_hatZs] = C_hatZs
     mat[n_hatZs:n_hatZs + n_tildZs, n_hatZs:n_hatZs + n_tildZs] = C_tildZs
     
-    point_areal = np.array([avg_cov_point_areal(X_hatZs, X_tildZs[i], sigma = np.exp(log_sigma), w = np.exp(log_w), b=b) for i in range(n_tildZs)])
+    point_areal = np.array([avg_cov_point_areal(X_hatZs, X_tildZs[i], sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), b=b) for i in range(n_tildZs)])
     mat[n_hatZs:n_hatZs + n_tildZs, :n_hatZs] = point_areal
     mat[:n_hatZs, n_hatZs:n_hatZs + n_tildZs] = point_areal.T
 
@@ -150,7 +145,7 @@ def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior= Fa
         a_bias_coefficients_mu = np.zeros(a_bias_poly_deg +1)
         a_bias_coefficients_Sigma = np.diag(np.repeat(10000., a_bias_poly_deg + 1))
         #sigma, length_sacle, obs_noi_scale have to take positive numbers, thus taking gamma priors, whereas the mutiplicative bias b takes a normal prior
-        log_prior = log_like_gamma(log_sigma, sigma_rate, sigma_shape) + log_like_gamma(log_w, len_scal_shape, len_scal_rate) + \
+        log_prior = log_like_gamma(log_sigma_Zs, sigma_rate, sigma_shape) + log_like_gamma(log_phi_Zs, len_scal_shape, len_scal_rate) + \
         log_like_gamma(log_obs_noi_scale, obs_noi_scale_shape, obs_noi_scale_rate) + log_like_normal(b, b_mu, b_Sigma) + \
         log_like_normal(a_bias_coefficients, a_bias_coefficients_mu, a_bias_coefficients_Sigma)
 
@@ -161,25 +156,30 @@ def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior= Fa
 
     return log_pos
 
-def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior= False, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
+def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior= False, gp_deltas_modelOut = False, \
+    a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
     else:
         num_len_scal = X_hatZs.shape(1)
-    #only one lengthsacle parameter
-    # log_w = theta
-
-    #adding parameters of sigma
-    # log_sigma = theta[0]
-    # log_w = theta[1:]
-
-    #adding parameters of sigma, obs_noi_scale, mulplicative bias b
-    log_sigma = theta[0]
-    log_w = theta[1:num_len_scal+1]
-    log_obs_noi_scale = theta[num_len_scal+1:num_len_scal+2]
-    b = theta[num_len_scal+2:num_len_scal+3]
-    a_bias_coefficients = theta[len(theta) -(a_bias_poly_deg+1):]
+    if gp_deltas_modelOut:
+        log_sigma_Zs = theta[0] #sigma of GP function for Zs
+        log_phi_Zs = theta[1:num_len_scal+1]  # length scale of GP function for Zs
+        log_obs_noi_scale = theta[num_len_scal+1:num_len_scal+2]
+        log_sigma_deltas_of_modelOut = theta[num_len_scal+2:num_len_scal+3] # sigma of GP function for deltas of model output
+        log_phi_deltas_of_modelOut = theta[num_len_scal+3:num_len_scal+3 + num_len_scal]  # length scale of GP function for for deltas of model output
+        b = theta[num_len_scal+3 + num_len_scal:num_len_scal+3 + num_len_scal+1]
+        a_bias_coefficients = theta[len(theta) - (a_bias_poly_deg+1):]
+        
+    else:
+        log_sigma_Zs = theta[0] #sigma of GP function for Zs
+        log_phi_Zs = theta[1:num_len_scal+1]  # length scale of GP function for Zs
+        log_obs_noi_scale = theta[num_len_scal+1:num_len_scal+2]
+        log_sigma_deltas_of_modelOut = theta[num_len_scal+2:num_len_scal+3] # sigma of Normal for deltas of model output
+        b = theta[num_len_scal+3:num_len_scal+4]
+        a_bias_coefficients = theta[len(theta) - (a_bias_poly_deg+1):]
+        
 
     n_hatZs = X_hatZs.shape[0]
     n_tildZs = X_tildZs.shape[0]  
@@ -187,13 +187,18 @@ def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPri
 
     mat = np.zeros(n_bothZs * n_bothZs).reshape(n_bothZs, n_bothZs)
 
-    C_hatZs = gpGaussLikeFuns.cov_matrix_reg(X = X_hatZs, sigma = np.exp(log_sigma), w = np.exp(log_w), obs_noi_scale = np.exp(log_obs_noi_scale))
-    C_tildZs = cov_areal(areal_coordinate = X_tildZs, sigma = np.exp(log_sigma), w = np.exp(log_w), b=b)
+    C_hatZs = gpGaussLikeFuns.cov_matrix_reg(X = X_hatZs, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), obs_noi_scale = np.exp(log_obs_noi_scale))
+    if gp_deltas_modelOut:
+        C_tildZs = cov_areal(areal_coordinate = X_tildZs, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), b=b, \
+            sigma_deltas_of_modelOut = np.exp(log_sigma_deltas_of_modelOut))
+    else:
+        C_tildZs = cov_areal(areal_coordinate = X_tildZs, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), b=b, \
+            sigma_deltas_of_modelOut = np.exp(log_sigma_deltas_of_modelOut))
 
     mat[:n_hatZs, :n_hatZs] = C_hatZs
     mat[n_hatZs:n_hatZs + n_tildZs, n_hatZs:n_hatZs + n_tildZs] = C_tildZs
     
-    point_areal = np.array([avg_cov_point_areal(X_hatZs, X_tildZs[i], sigma = np.exp(log_sigma), w = np.exp(log_w), b=b) for i in range(n_tildZs)])
+    point_areal = np.array([avg_cov_point_areal(X_hatZs, X_tildZs[i], sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), b=b) for i in range(n_tildZs)])
     mat[n_hatZs:n_hatZs + n_tildZs, :n_hatZs] = point_areal
     mat[:n_hatZs, n_hatZs:n_hatZs + n_tildZs] = point_areal.T
 
@@ -206,8 +211,9 @@ def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPri
     l_chol_C = gpGaussLikeFuns.compute_L_chol(mat)
     u = linalg.solve_triangular(l_chol_C.T, linalg.solve_triangular(l_chol_C, y - mu_hatTildZs, lower=True))     
     joint_log_like  = -np.sum(np.log(np.diag(l_chol_C))) - 0.5 * np.dot(y - mu_hatTildZs, u) - 0.5 * n_bothZs * np.log(2*np.pi) 
-    
+
     if withPrior:
+
         #compute the likelihood of the gamma priors
         sigma_shape = 1.2 
         sigma_rate = 0.2 
@@ -216,41 +222,45 @@ def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPri
         obs_noi_scale_shape = 1.2
         obs_noi_scale_rate = 0.6
         b_mu =0.
-        b_Sigma = np.diag([1.]) #choose a 'flat' prior, N(mu = 0, sd = 100)
+        b_Sigma = np.diag([10000.])
         a_bias_coefficients_mu = np.zeros(a_bias_poly_deg +1)
-        a_bias_coefficients_Sigma = np.diag(np.repeat(1., a_bias_poly_deg + 1))
+        a_bias_coefficients_Sigma = np.diag(np.repeat(10000., a_bias_poly_deg + 1))
         #sigma, length_sacle, obs_noi_scale have to take positive numbers, thus taking gamma priors, whereas the mutiplicative bias b takes a normal prior
-        log_prior = log_like_gamma(log_sigma, sigma_rate, sigma_shape) + log_like_gamma(log_w, len_scal_shape, len_scal_rate) + \
+        log_prior = log_like_gamma(log_sigma_Zs, sigma_rate, sigma_shape) + log_like_gamma(log_phi_Zs, len_scal_shape, len_scal_rate) + \
         log_like_gamma(log_obs_noi_scale, obs_noi_scale_shape, obs_noi_scale_rate) + log_like_normal(b, b_mu, b_Sigma) + \
         log_like_normal(a_bias_coefficients, a_bias_coefficients_mu, a_bias_coefficients_Sigma)
 
         #compute the logarithm of the posterior
-        log_pos = joint_log_like + log_prior 
+        log_pos = joint_log_like + log_prior
         minus_log_pos = - log_pos
     else:
         minus_log_pos = - joint_log_like
 
     return minus_log_pos
 
-def minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, modelBias, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
+def minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, modelBias, gp_deltas_modelOut = False, \
+    a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
     else:
         num_len_scal = X_hatZs.shape(1)
-    #only one lengthsacle parameter
-    # log_w = theta
 
-    #adding parameters of sigma
-    # log_sigma = theta[0]
-    # log_w = theta[1:]
-
-    #adding parameters of sigma, obs_noi_scale, mulplicative bias b
-    log_sigma = theta[0]
-    log_w = theta[1:num_len_scal+1]
-    log_obs_noi_scale = theta[num_len_scal+1:]
-    b = modelBias[0]
-    a_bias_coefficients = modelBias[1:]
+    if gp_deltas_modelOut:
+        log_sigma_Zs = theta[0] #sigma of GP function for Zs
+        log_phi_Zs = theta[1:num_len_scal+1]  # length scale of GP function for Zs
+        log_obs_noi_scale = theta[num_len_scal+1:num_len_scal+2]
+        log_sigma_deltas_of_modelOut = theta[num_len_scal+2:num_len_scal+3] # sigma of GP function for deltas of model output
+        log_phi_deltas_of_modelOut = theta[len(theta) - num_len_scal:]  # length scale of GP function for for deltas of model output
+        b = modelBias[0]
+        a_bias_coefficients = modelBias[1:]
+    else:
+        log_sigma_Zs = theta[0] #sigma of GP function for Zs
+        log_phi_Zs = theta[1:num_len_scal+1]  # length scale of GP function for Zs
+        log_obs_noi_scale = theta[num_len_scal+1:num_len_scal+2]
+        log_sigma_deltas_of_modelOut = theta[len(theta) -1:] # sigma of Normal for deltas of model output
+        b = modelBias[0]
+        a_bias_coefficients = modelBias[1:]
 
     n_hatZs = X_hatZs.shape[0]
     n_tildZs = X_tildZs.shape[0]  
@@ -258,13 +268,18 @@ def minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, 
 
     mat = np.zeros(n_bothZs * n_bothZs).reshape(n_bothZs, n_bothZs)
 
-    C_hatZs = gpGaussLikeFuns.cov_matrix_reg(X = X_hatZs, sigma = np.exp(log_sigma), w = np.exp(log_w), obs_noi_scale = np.exp(log_obs_noi_scale))
-    C_tildZs = cov_areal(areal_coordinate = X_tildZs, sigma = np.exp(log_sigma), w = np.exp(log_w), b=b)
+    C_hatZs = gpGaussLikeFuns.cov_matrix_reg(X = X_hatZs, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), obs_noi_scale = np.exp(log_obs_noi_scale))
+    if gp_deltas_modelOut:
+        C_tildZs = cov_areal(areal_coordinate = X_tildZs, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), b=b, \
+            sigma_deltas_of_modelOut = np.exp(log_sigma_deltas_of_modelOut))
+    else:
+        C_tildZs = cov_areal(areal_coordinate = X_tildZs, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), b=b, \
+            sigma_deltas_of_modelOut = np.exp(log_sigma_deltas_of_modelOut))
 
     mat[:n_hatZs, :n_hatZs] = C_hatZs
     mat[n_hatZs:n_hatZs + n_tildZs, n_hatZs:n_hatZs + n_tildZs] = C_tildZs
     
-    point_areal = np.array([avg_cov_point_areal(X_hatZs, X_tildZs[i], sigma = np.exp(log_sigma), w = np.exp(log_w), b=b) for i in range(n_tildZs)])
+    point_areal = np.array([avg_cov_point_areal(X_hatZs, X_tildZs[i], sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), b=b) for i in range(n_tildZs)])
     mat[n_hatZs:n_hatZs + n_tildZs, :n_hatZs] = point_areal
     mat[:n_hatZs, n_hatZs:n_hatZs + n_tildZs] = point_areal.T
 
@@ -291,7 +306,7 @@ def minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, 
         a_bias_coefficients_mu = np.zeros(a_bias_poly_deg +1)
         a_bias_coefficients_Sigma = np.diag(np.repeat(1., a_bias_poly_deg + 1))
         #sigma, length_sacle, obs_noi_scale have to take positive numbers, thus taking gamma priors, whereas the mutiplicative bias b takes a normal prior
-        log_prior = log_like_gamma(log_sigma, sigma_rate, sigma_shape) + log_like_gamma(log_w, len_scal_shape, len_scal_rate) + \
+        log_prior = log_like_gamma(log_sigma_Zs, sigma_rate, sigma_shape) + log_like_gamma(log_phi_Zs, len_scal_shape, len_scal_rate) + \
         log_like_gamma(log_obs_noi_scale, obs_noi_scale_shape, obs_noi_scale_rate) + log_like_normal(b, b_mu, b_Sigma) + \
         log_like_normal(a_bias_coefficients, a_bias_coefficients_mu, a_bias_coefficients_Sigma)
 
@@ -474,8 +489,9 @@ class Gibbs_sampler():
         model_bias_coefficients = np.concatenate((coefficients, [intercept]))
         return model_bias_coefficients
     # try to fix the model bias parameters to the ones obtained from linear regression, to check how intialisation can affect the optimisation
-    def optim(self, withPrior, modelBias, onlyOptimCovPar = False, repeat=5, method='BFGS', rbf=True, OMEGA = 1e-6): 
-        print 'starting optimising the parameters when withPrior is ' + str(withPrior)
+    def optim(self, withPrior, modelBias, onlyOptimCovPar = False, gpdtsMo=False, repeat=5, method='BFGS', rbf=True, OMEGA = 1e-6): 
+        print 'starting optimising when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
+        ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) 
         if rbf:
             num_par=1
         else:
@@ -485,14 +501,19 @@ class Gibbs_sampler():
         if onlyOptimCovPar:
             while count != repeat:
                 try:
-                    initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                    np.log(np.random.gamma(1.2, 1./0.6, 1))), axis=0)
-                    print 'initial theta when withPrior is ' + str(withPrior) + \
+                    if gpdtsMo:
+                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), \
+                        np.log(np.random.gamma(1., np.sqrt(num_par), num_par))), axis=0)
+                    else:
+                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1))), axis=0)
+                    print 'initial theta when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
                     ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :' + str(initial_theta)
                     tmp_res = minimize(fun=minus_log_obsZs_giv_par_of_cov, 
                                    x0=initial_theta, method=method,
                                    jac=False,
-                                   args=(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, withPrior, modelBias),
+                                   args=(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, withPrior, modelBias, gpdtsMo),
                                    options={'maxiter': 100, 'disp': False})
                     print 'The ' + str(count + 1) + ' round of optimisation'
                 except:
@@ -516,14 +537,19 @@ class Gibbs_sampler():
         else:
             while count != repeat:
                 try:
-                    initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                    np.log(np.random.gamma(1.2, 1./0.6, 1)), modelBias), axis=0)
-                    print 'initial theta when withPrior is ' + str(withPrior) + \
+                    if gpdtsMo:
+                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), \
+                        np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), modelBias), axis=0)
+                    else:
+                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), modelBias), axis=0)
+                    print 'initial theta when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
                     ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :' + str(initial_theta)
                     tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
                                    x0=initial_theta, method=method,
                                    jac=False,
-                                   args=(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, withPrior),
+                                   args=(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, withPrior, gpdtsMo),
                                    options={'maxiter': 100, 'disp': False})
                     print 'The ' + str(count + 1) + ' round of optimisation'
                 except:
@@ -538,19 +564,52 @@ class Gibbs_sampler():
             res = res.T
             print 'minus_log_like for repeat ' + str(repeat) + ' is ' + str(res[1, :])
             i = np.argmin(res[1,:])
+         
             print 'log_cov_parameters plus model bias after optimisation withPrior is ' + str(withPrior) + \
-             ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :'  + str(np.array(res[0, :][i]))
+             ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[0, :][i]))
             print 'parameters after optimisation withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :'  + str([np.exp(np.array(res[0, :][i])[:-4]), np.array(res[0, :][i])[-4:]])
+            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + \
+            str([np.exp(np.array(res[0, :][i])[:-4]), np.array(res[0, :][i])[-4:]])
             print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :'  + str(np.array(res[2, :][i]))
+            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[2, :][i]))
+          
         return [np.array(res[0, :][i]), np.array(res[2, :][i])]
-    def sampler(self, withPrior = False, onlyOptimCovPar = False, repeat = 5):
+    def sampler(self, withPrior = False, onlyOptimCovPar = False, gpdtsMo=False, repeat = 5):
 
         model_bias = self.initial_model_bias() 
         print 'model bias from linear regression is :' + str(model_bias)
-        mu, cov = self.optim(withPrior, model_bias, onlyOptimCovPar, repeat)
+
+        mu, cov = self.optim(withPrior, model_bias, onlyOptimCovPar, gpdtsMo, repeat)
         return [mu, cov] 
+
+def read_Sim_Data():
+    #read the samples of hatZs
+    X_hatZs = np.array(pd.read_csv('dataSimulated/X_hatZs_res100_a_bias_poly_deg2SEED1_lsZs[0.1]_gpdtsMoFalse_lsdtsMo[0.1].txt', sep=" ", header=None))
+    y_hatZs = np.array(pd.read_csv('dataSimulated/y_hatZs_res100_a_bias_poly_deg2SEED1_lsZs[0.1]_gpdtsMoFalse_lsdtsMo[0.1].txt', sep=" ", header=None)).reshape(X_hatZs.shape[0])
+
+    #read the samples of tildZs
+    X_tildZs_in = open('dataSimulated/X_tildZs_a_bias_poly_deg2SEED1_lsZs[0.1]_gpdtsMoFalse_lsdtsMo[0.1].pickle', 'rb')
+    X_tildZs = pickle.load(X_tildZs_in)
+
+    y_tildZs_in = open('dataSimulated/y_tildZs_a_bias_poly_deg2SEED1_lsZs[0.1]_gpdtsMoFalse_lsdtsMo[0.1].pickle', 'rb')
+    y_tildZs = pickle.load(y_tildZs_in)
+
+    areal_tildZs_in = open('dataSimulated/areal_tildZs_a_bias_poly_deg2SEED1_lsZs[0.1]_gpdtsMoFalse_lsdtsMo[0.1].pickle', 'rb')
+    areal_tildZs = pickle.load(areal_tildZs_in)
+
+    return[X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs]
+
+def test_like_fun():
+    X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = read_Sim_Data()
+    num_par =1 
+    initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                    np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1))), axis=0)
+    modelBias = np.array([ 2.00930792,  4.91308723,  5.03209346,  0.12865613])
+    test = minus_log_obsZs_giv_par_of_cov(initial_theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior, modelBias, gp_deltas_modelOut = False, \
+    a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6)
+    print test
+    return test 
+
 
 if __name__ == '__main__':
     computeN3Cost.init(0)
@@ -563,33 +622,36 @@ if __name__ == '__main__':
         help='flag for fixed model bias parameters from linear regression for intialisation in optimisition')
     p.add_argument('-onlyOptimCovPar', dest='onlyOptimCovPar', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for only optimising the cov parameters with fixed model bias from linear regression')
-    p.add_argument('-ploy_deg', type=int, dest='poly_deg', default=2, help='degree of the polynomial function of the additive model bias')
-    p.add_argument('-lengthscale', type=float, dest='lengthscale', default=0.1, help='lengthscale of the Gaussian covriance function') # \
-    #default value is 0.1 in order to simulate the less smooth windstorm footprint across different areas
+    p.add_argument('-poly_deg', type=int, dest='poly_deg', default=2, help='degree of the polynomial function of the additive model bias')
+    p.add_argument('-lsZs', type=float, dest='lsZs', default=0.1, help='lengthscale of the GP covariance for Zs')
+    p.add_argument('-lsdtsMo', type=float, dest='lsdtsMo', default=0.1, help='lengthscale of the GP covariance for deltas of model output')
+    p.add_argument('-gpdtsMo', dest='gpdtsMo', default=False,  type=lambda x: (str(x).lower() == 'true'), \
+        help='flag for whether deltas of model output is a GP')
     args = p.parse_args()
     if args.output is None: args.output = os.getcwd()
-    output_folder = args.output + '/SEED_' + str(args.SEED) 
-    output_folder = args.output + '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + \
-    '_onlyOptimCovPar_' + str(args.onlyOptimCovPar) + '_lengthscale' + str(args.lengthscale)
+    output_folder = args.output + '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_fixMb_' + str(args.fixMb) + '_onlyOptimCovPar_' + str(args.onlyOptimCovPar) + \
+    '_poly_deg_' + str(args.poly_deg) + '_lsZs_' + str(args.lsZs) + '_lsdtsMo_' + str(args.lsdtsMo) + '_gpdtsMo_' + str(args.gpdtsMo)
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     output_folder += '/'
     print 'Output: ' + output_folder
 
+    # Test the likelihood function
+    # for i in range(10):
+    #     test_like_fun()
+    # exit(-1)
+
     start = default_timer()
 
-    X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = simData1.sim_hatTildZs_With_Plots(SEED = args.SEED, w = [args.lengthscale])
-    # theta = [1.0, 1.0, 0.1]
-    # modelBias = np.array([2.0, 5.0, 5.0, 0.1])
-    # withPrior = False
-    # res = minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, modelBias)
-    # print res
-    # exit(-1)
+    X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = simData.sim_hatTildZs_With_Plots(SEED = args.SEED, phi_Z_s = [args.lsZs], gp_deltas_modelOut = args.gpdtsMo, \
+        phi_deltas_of_modelOut = [args.lsdtsMo])
+    # X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = read_Sim_Data()
+    
     if args.fixMb:
         res = Gibbs_sampler(X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs)
-        mu, cov = res.sampler(args.withPrior, args.onlyOptimCovPar)
+        mu, cov = res.sampler(args.withPrior, args.onlyOptimCovPar, args.gpdtsMo, args.repeat)
     else:
-        mu, cov = optimisqe(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior)
+        mu, cov = optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior)
 
     end = default_timer()
     print 'running time for optimisation with fixMb is ' + str(args.fixMb) + str(end - start) + ' seconds'
