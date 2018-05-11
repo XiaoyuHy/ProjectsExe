@@ -12,17 +12,18 @@ from scipy import linalg
 import argparse
 import os
 
-def fun_a_bias(x, a_bias_coefficients = [5., 5., 0.1]):
+def fun_a_bias(x, a_bias_coefficients = [5., 5., 3.]):
     a_bias_coefficients = np.array(a_bias_coefficients)
     a_bias = np.dot(a_bias_coefficients, np.concatenate((x, [1.])))
     return a_bias
 
-def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = False, phi_deltas_of_modelOut = [0.1], areal_res = 20, point_res=100, \
-    sigma_Zs = 1.,  sigma_deltas_of_modelOut = 1., obs_noi_scale = 0.1, b= 2., num_hatZs=200, num_tildZs = 150, a_bias_poly_deg = 2):
+def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = False, phi_deltas_of_modelOut = [1.0], \
+    sigma_Zs = 1.5, sigma_deltas_of_modelOut = 1.0, obs_noi_scale = 0.1, b= 2., areal_res = 20, point_res=100, num_hatZs=200, num_tildZs = 150, \
+     a_bias_poly_deg = 2):
     np.random.seed(SEED)
     lower_bound = np.array([0.] * 2)
     upper_bound = np.array([1.] * 2)
-    x1, x2 = np.meshgrid(np.linspace(lower_bound[0], upper_bound[0], point_res),
+    x1, x2 = np.meshgrid(np.linspace(lower_bound[0], upper_bound[0], point_res),  
                          np.linspace(lower_bound[1], upper_bound[1], point_res))
 
     #obtain coordinates for each area
@@ -35,7 +36,9 @@ def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = Fal
 
     #save all the areal coordinates
     all_X_tildZs_out = open('dataSimulated/all_X_tildZs_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-     '_lsZs' + str(phi_Z_s) + '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' + str(phi_deltas_of_modelOut)  + '.pickle', 'wb')
+     '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+     '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+     + '.pickle', 'wb')
     pickle.dump(areal_coordinate, all_X_tildZs_out)
     all_X_tildZs_out.close()
 
@@ -46,11 +49,29 @@ def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = Fal
     l_chol_cov = np.linalg.cholesky(cov)
     all_y_Zs = np.dot(l_chol_cov, np.random.normal(size=[num_Zs, 1]).reshape(num_Zs))
     np.savetxt('dataSimulated/all_y_Zs_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-    '_lsZs' + str(phi_Z_s) + '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' + str(phi_deltas_of_modelOut)  + '.txt', all_y_Zs)
+    '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+    + '.txt', all_y_Zs)
 
     all_X_Zs = np.vstack([x1.ravel(), x2.ravel()]).T
     np.savetxt('dataSimulated/all_X_Zs_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-    '_lsZs' + str(phi_Z_s) + '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' + str(phi_deltas_of_modelOut)  + '.txt', all_X_Zs)
+    '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+      + '.txt', all_X_Zs)
+
+    a_bias = np.array([fun_a_bias(all_X_Zs[i]) for i in range(len(all_X_Zs))])
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    ax.plot_surface(x1, x2, a_bias.reshape(point_res, point_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
+    ax.set_xlabel('$x_1$')
+    ax.set_ylabel('$x_2$')
+    ax.set_zlabel('$\^{Z(s)}$')
+    plt.savefig('dataSimulated/d3_aBias_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
+     '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+      + '_noNoi.png')
+    plt.close()
+
 
     #sample hatZs
     idx = np.random.randint(0, num_Zs, num_hatZs)
@@ -59,9 +80,13 @@ def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = Fal
     #add normal noise with scale = obs_noi_scale
     y_hatZs = y_hatZs + np.random.normal(loc=0., scale = obs_noi_scale, size = num_hatZs)
     np.savetxt('dataSimulated/X_hatZs_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-     '_lsZs' + str(phi_Z_s) + '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' + str(phi_deltas_of_modelOut)  + '.txt', X_hatZs)
+     '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+     + '.txt', X_hatZs)
     np.savetxt('dataSimulated/y_hatZs_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-    '_lsZs' + str(phi_Z_s) + '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' + str(phi_deltas_of_modelOut)  + '.txt', y_hatZs)
+    '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+     + '.txt', y_hatZs)
 
     # plt.figure()
     # im = plt.imshow(np.flipud(all_y_Zs.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap = plt.matplotlib.cm.jet)
@@ -82,7 +107,9 @@ def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = Fal
     ax.set_ylabel('$x_2$')
     ax.set_zlabel('$\^{Z(s)}$')
     plt.savefig('dataSimulated/d3_Zs_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-     '_lsZs' + str(phi_Z_s) + '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' + str(phi_deltas_of_modelOut)  + '_noNoi.png')
+     '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+      + '_noNoi.png')
     plt.close()
 
     #generate the tildZs = b * average of the areal Zs
@@ -109,15 +136,32 @@ def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = Fal
 
         all_y_tildZs = np.array([fun_a_bias(np.mean(areal_coordinate[i], axis=0)) + b * np.mean(areal_Zs[i]) \
             + np.mean(areal_deltas[i]) for i in range(len(areal_Zs))])
+
+        avg_aBias = np.array([fun_a_bias(np.mean(areal_coordinate[i], axis=0))  for i in range(len(areal_Zs))])
+        avg_deltas = np.array([np.mean(areal_deltas[i]) for i in range(len(areal_Zs))])
+
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.plot_surface(x1, x2, all_y_deltas.reshape(point_res,point_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
+        ax.set_xlabel('$x_1$')
+        ax.set_ylabel('$x_2$')
+        ax.set_zlabel('$\^{Z(s)}$')
+        plt.savefig('dataSimulated/d3_deltas_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
+         '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+        '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+          + '_noNoi.png')
+        plt.close()
     else:
-        all_y_tildZs = np.array([fun_a_bias(np.mean(areal_coordinate[i], axis=0)) + b * np.mean(areal_Zs[i]) \
-            + np.mean(np.random.normal(0, np.sqrt(sigma_deltas_of_modelOut), res_per_areal**2)) for i in range(len(areal_Zs))])
-        
-
-
+        all_y_tildZs = np.array([fun_a_bias(np.mean(areal_coordinate[i], axis=0)) + \
+            b * np.mean(areal_Zs[i]) \
+            + np.mean(np.random.normal(0, res_per_areal * np.sqrt(sigma_deltas_of_modelOut), res_per_areal**2)) \
+            for i in range(len(areal_Zs))])
+      
     # save all the tildZs
     all_y_tildZs_out = open('dataSimulated/all_y_tildZs_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-        '_lsZs' + str(phi_Z_s) + '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' + str(phi_deltas_of_modelOut)  + '.pickle', 'wb')
+        '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+      + '.pickle', 'wb')
     pickle.dump(all_y_tildZs, all_y_tildZs_out)
     all_y_tildZs_out.close()
 
@@ -135,17 +179,23 @@ def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = Fal
 
     #save the samples of tildZs
     y_tildZs_out = open('dataSimulated/y_tildZs_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-        '_lsZs' + str(phi_Z_s) + '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' + str(phi_deltas_of_modelOut)  + '.pickle', 'wb')
+        '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+      + '.pickle', 'wb')
     pickle.dump(y_tildZs, y_tildZs_out)
     y_tildZs_out.close()
 
     X_tildZs_out = open('dataSimulated/X_tildZs_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-        '_lsZs' + str(phi_Z_s) + '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' + str(phi_deltas_of_modelOut)  + '.pickle', 'wb')
+        '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+      + '.pickle', 'wb')
     pickle.dump(X_tildZs, X_tildZs_out)
     X_tildZs_out.close()
 
     areal_tildZs_out = open('dataSimulated/areal_tildZs_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-        '_lsZs' + str(phi_Z_s) + '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' + str(phi_deltas_of_modelOut)  + '.pickle', 'wb')
+        '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+      + '.pickle', 'wb')
     pickle.dump(areal_tildZs, areal_tildZs_out)
     areal_tildZs_out.close()
 
@@ -176,7 +226,33 @@ def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = Fal
     ax.set_ylabel('$x_2$')
     ax.set_zlabel('$\~{Z(s)}$')
     plt.savefig('dataSimulated/d3_tildZs_res' + str(areal_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + '_SEED' + str(SEED) + \
-     '_lsZs' + str(phi_Z_s) + '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' + str(phi_deltas_of_modelOut) + '_noNoi.png')
+     '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+     + '_noNoi.png')
+    plt.close()
+
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    ax.plot_surface(x1, x2, avg_aBias.reshape(areal_res, areal_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
+    ax.set_xlabel('$x_1$')
+    ax.set_ylabel('$x_2$')
+    ax.set_zlabel('$\~{Z(s)}$')
+    plt.savefig('dataSimulated/d3_avg_aBias_res' + str(areal_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + '_SEED' + str(SEED) + \
+     '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+     + '_noNoi.png')
+    plt.close()
+
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    ax.plot_surface(x1, x2, avg_deltas.reshape(areal_res, areal_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
+    ax.set_xlabel('$x_1$')
+    ax.set_ylabel('$x_2$')
+    ax.set_zlabel('$\~{Z(s)}$')
+    plt.savefig('dataSimulated/d3_avg_deltas_res' + str(areal_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + '_SEED' + str(SEED) + \
+     '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+     + '_noNoi.png')
     plt.close()
     return [X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs]
 
@@ -185,7 +261,9 @@ if __name__ == '__main__':
     p.add_argument('-SEED', type=int, dest='SEED', default=0, help='The simulation index')
     p.add_argument('-o', type=str, dest='output', default=None, help='Output folder')
     p.add_argument('-lsZs', type=float, dest='lsZs', default=0.1, help='lengthscale of the GP covariance for Zs')
-    p.add_argument('-lsdtsMo', type=float, dest='lsdtsMo', default=0.1, help='lengthscale of the GP covariance for deltas of model output')
+    p.add_argument('-lsdtsMo', type=float, dest='lsdtsMo', default=0.6, help='lengthscale of the GP covariance for deltas of model output')
+    p.add_argument('-sigZs', type=float, dest='sigZs', default=1.5, help='sigma (marginal variance) of the GP covariance for Zs')
+    p.add_argument('-sigdtsMo', type=float, dest='sigdtsMo', default=1.0, help='sigma (marginal variance) of the GP covariance for deltas of model output')
     p.add_argument('-gpdtsMo', dest='gpdtsMo', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether deltas of model output is a GP')
     args = p.parse_args()
@@ -195,7 +273,7 @@ if __name__ == '__main__':
     #     os.makedirs(output_folder)
     # output_folder += '/'
     sim_hatTildZs_With_Plots(SEED = args.SEED, phi_Z_s = [args.lsZs], gp_deltas_modelOut = args.gpdtsMo, \
-        phi_deltas_of_modelOut = [args.lsdtsMo])
+        phi_deltas_of_modelOut = [args.lsdtsMo], sigma_Zs = args.sigZs, sigma_deltas_of_modelOut = args.sigdtsMo)
     # for i in range(10, 11):
     #     sim_hatTildZs_With_Plots(SEED = i)
 
