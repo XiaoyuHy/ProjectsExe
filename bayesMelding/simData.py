@@ -2,8 +2,8 @@
 import numpy as np
 import gpGaussLikeFuns
 import computeN3Cost
-from matplotlib import pyplot as plt
-plt.switch_backend('agg')
+#from matplotlib import pyplot as plt
+#plt.switch_backend('agg') # This line is for running code on cluster to make pyplot working on cluster
 from mpl_toolkits.mplot3d import Axes3D
 from itertools import chain
 import pickle
@@ -60,17 +60,18 @@ def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = Fal
       + '.txt', all_X_Zs)
 
     a_bias = np.array([fun_a_bias(all_X_Zs[i]) for i in range(len(all_X_Zs))])
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    ax.plot_surface(x1, x2, a_bias.reshape(point_res, point_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
-    ax.set_xlabel('$x_1$')
-    ax.set_ylabel('$x_2$')
-    ax.set_zlabel('$\^{Z(s)}$')
-    plt.savefig('dataSimulated/d3_aBias_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-     '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
-    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
-      + '_noNoi.png')
-    plt.close()
+
+    # fig = plt.figure()
+    # ax = Axes3D(fig)
+    # ax.plot_surface(x1, x2, a_bias.reshape(point_res, point_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
+    # ax.set_xlabel('$x_1$')
+    # ax.set_ylabel('$x_2$')
+    # ax.set_zlabel('$\^{Z(s)}$')
+    # plt.savefig('dataSimulated/d3_aBias_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
+    #  '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    # '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+    #   + '_noNoi.png')
+    # plt.close()
 
 
     #sample hatZs
@@ -100,17 +101,17 @@ def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = Fal
     # plt.savefig('dataSimulated/d2_Zs_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + '_noNoi.png')
     # plt.close()
 
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    ax.plot_surface(x1, x2, all_y_Zs.reshape(point_res,point_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
-    ax.set_xlabel('$x_1$')
-    ax.set_ylabel('$x_2$')
-    ax.set_zlabel('$\^{Z(s)}$')
-    plt.savefig('dataSimulated/d3_Zs_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-     '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
-    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
-      + '_noNoi.png')
-    plt.close()
+    # fig = plt.figure()
+    # ax = Axes3D(fig)
+    # ax.plot_surface(x1, x2, all_y_Zs.reshape(point_res,point_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
+    # ax.set_xlabel('$x_1$')
+    # ax.set_ylabel('$x_2$')
+    # ax.set_zlabel('$\^{Z(s)}$')
+    # plt.savefig('dataSimulated/d3_Zs_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
+    #  '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    # '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+    #   + '_noNoi.png')
+    # plt.close()
 
     #generate the tildZs = b * average of the areal Zs
     mat_Zs = all_y_Zs.reshape(point_res, point_res)
@@ -140,17 +141,17 @@ def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = Fal
         avg_aBias = np.array([fun_a_bias(np.mean(areal_coordinate[i], axis=0))  for i in range(len(areal_Zs))])
         avg_deltas = np.array([np.mean(areal_deltas[i]) for i in range(len(areal_Zs))])
 
-        fig = plt.figure()
-        ax = Axes3D(fig)
-        ax.plot_surface(x1, x2, all_y_deltas.reshape(point_res,point_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
-        ax.set_xlabel('$x_1$')
-        ax.set_ylabel('$x_2$')
-        ax.set_zlabel('$\^{Z(s)}$')
-        plt.savefig('dataSimulated/d3_deltas_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
-         '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
-        '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
-          + '_noNoi.png')
-        plt.close()
+        # fig = plt.figure()
+        # ax = Axes3D(fig)
+        # ax.plot_surface(x1, x2, all_y_deltas.reshape(point_res,point_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
+        # ax.set_xlabel('$x_1$')
+        # ax.set_ylabel('$x_2$')
+        # ax.set_zlabel('$\^{Z(s)}$')
+        # plt.savefig('dataSimulated/d3_deltas_res' + str(point_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + \
+        #  '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+        # '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+        #   + '_noNoi.png')
+        # plt.close()
     else:
         all_y_tildZs = np.array([fun_a_bias(np.mean(areal_coordinate[i], axis=0)) + \
             b * np.mean(areal_Zs[i]) \
@@ -219,41 +220,41 @@ def sim_hatTildZs_With_Plots(SEED = 1, phi_Z_s = [0.1], gp_deltas_modelOut = Fal
     # plt.savefig('dataSimulated/d2_tildZs_res' + str(areal_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + 'SEED' + str(SEED) + '_noNoi.png')
     # plt.close()
 
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    ax.plot_surface(x1, x2, all_y_tildZs.reshape(areal_res, areal_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
-    ax.set_xlabel('$x_1$')
-    ax.set_ylabel('$x_2$')
-    ax.set_zlabel('$\~{Z(s)}$')
-    plt.savefig('dataSimulated/d3_tildZs_res' + str(areal_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + '_SEED' + str(SEED) + \
-     '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
-    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
-     + '_noNoi.png')
-    plt.close()
+    # fig = plt.figure()
+    # ax = Axes3D(fig)
+    # ax.plot_surface(x1, x2, all_y_tildZs.reshape(areal_res, areal_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
+    # ax.set_xlabel('$x_1$')
+    # ax.set_ylabel('$x_2$')
+    # ax.set_zlabel('$\~{Z(s)}$')
+    # plt.savefig('dataSimulated/d3_tildZs_res' + str(areal_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + '_SEED' + str(SEED) + \
+    #  '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    # '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+    #  + '_noNoi.png')
+    # plt.close()
 
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    ax.plot_surface(x1, x2, avg_aBias.reshape(areal_res, areal_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
-    ax.set_xlabel('$x_1$')
-    ax.set_ylabel('$x_2$')
-    ax.set_zlabel('$\~{Z(s)}$')
-    plt.savefig('dataSimulated/d3_avg_aBias_res' + str(areal_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + '_SEED' + str(SEED) + \
-     '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
-    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
-     + '_noNoi.png')
-    plt.close()
+    # fig = plt.figure()
+    # ax = Axes3D(fig)
+    # ax.plot_surface(x1, x2, avg_aBias.reshape(areal_res, areal_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
+    # ax.set_xlabel('$x_1$')
+    # ax.set_ylabel('$x_2$')
+    # ax.set_zlabel('$\~{Z(s)}$')
+    # plt.savefig('dataSimulated/d3_avg_aBias_res' + str(areal_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + '_SEED' + str(SEED) + \
+    #  '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    # '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+    #  + '_noNoi.png')
+    # plt.close()
 
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    ax.plot_surface(x1, x2, avg_deltas.reshape(areal_res, areal_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
-    ax.set_xlabel('$x_1$')
-    ax.set_ylabel('$x_2$')
-    ax.set_zlabel('$\~{Z(s)}$')
-    plt.savefig('dataSimulated/d3_avg_deltas_res' + str(areal_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + '_SEED' + str(SEED) + \
-     '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
-    '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
-     + '_noNoi.png')
-    plt.close()
+    # fig = plt.figure()
+    # ax = Axes3D(fig)
+    # ax.plot_surface(x1, x2, avg_deltas.reshape(areal_res, areal_res), rstride=1, cstride=1, cmap=plt.matplotlib.cm.jet)
+    # ax.set_xlabel('$x_1$')
+    # ax.set_ylabel('$x_2$')
+    # ax.set_zlabel('$\~{Z(s)}$')
+    # plt.savefig('dataSimulated/d3_avg_deltas_res' + str(areal_res) + '_a_bias_poly_deg' + str(a_bias_poly_deg) + '_SEED' + str(SEED) + \
+    #  '_lsZs' + str(phi_Z_s) + '_sigZs' + str(sigma_Zs) + \
+    # '_gpdtsMo' + str(gp_deltas_modelOut) + '_lsdtsMo' +  str(phi_deltas_of_modelOut) + '_sigdtsMo' + str(sigma_deltas_of_modelOut) \
+    #  + '_noNoi.png')
+    # plt.close()
     return [X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs]
 
 if __name__ == '__main__':

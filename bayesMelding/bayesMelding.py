@@ -129,6 +129,12 @@ def point_areal(X_hatZs, areal_coordinate, log_sigma_Zs, log_phi_Zs, b, pointAre
 
 def test_fun():
     X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = read_Sim_Data()
+    theta = np.array([0.51390184, -2.30507058, -2.37142105, -0.57473654, -1.76136598,  1.94541264, 5.56365135, 5.26520738, 2.42106564])
+
+    _, grads = log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_modelOut = True, withPrior= False, \
+    a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6)
+    print grads
+
     num_par = 1
     # initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
     #                  np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), \
@@ -1066,7 +1072,7 @@ class Gibbs_sampler():
         model_bias_coefficients = np.concatenate((coefficients, [intercept]))
         return model_bias_coefficients
     # try to fix the model bias parameters to the ones obtained from linear regression, to check how intialisation can affect the optimisation
-    def optim(self, withPrior, modelBias, onlyOptimCovPar = False, gpdtsMo=False, useGradsFlag = False, repeat=3, method='BFGS', rbf=True, OMEGA = 1e-6): 
+    def optim(self, withPrior, modelBias, onlyOptimCovPar = False, gpdtsMo=False, useGradsFlag = False, repeat=3, seed =188, method='BFGS', rbf=True, OMEGA = 1e-6): 
         print 'starting optimising when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
         ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) 
         if rbf:
@@ -1140,16 +1146,30 @@ class Gibbs_sampler():
                 except:
                     continue
                 if tmp_res['fun'] is not None:
-                    count += 1
-                    temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
-                    np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
-                    res.append(temp_res)
+                    if tmp_res['fun']<0:
+                        temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
+                        np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
+                        res.append(temp_res)
+                        file = 'logs/seed' + str(seed)+ 'successAtrep' + str(count)
+                        f0 = open(file, 'wb')
+                        f0.close()
+
+                        break
+                    else:
+                        count += 1
+                        temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
+                        np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
+                        res.append(temp_res)
                 else:
                     continue      
             res = np.array(res)
             res = res.T
             print 'minus_log_like for repeat ' + str(repeat) + ' is ' + str(res[1, :])
             i = np.argmin(res[1,:])
+            if np.array(res[1, :][i]) >0:
+                file = 'logs/unsuccessAll' + str(repeat)+ 'repSeed' + str(seed)
+                f1 = open(file, 'wb')
+                f1.close()
          
             print 'log_cov_parameters plus model bias after optimisation withPrior is ' + str(withPrior) + \
              ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[0, :][i]))
@@ -1164,14 +1184,25 @@ class Gibbs_sampler():
             ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[4, :][i]))
             print 'Optim nit withPrior is ' + str(withPrior) + \
             ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[5, :][i]))
-          
+
+            #check wheter the gradients at theta from optimisation are close to zeros (wchich indicates the convergence of the optimisation)
+            _, grads_at_resOptim = log_obsZs_giv_par_with_grad(np.array(res[0, :][i]), self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs,\
+             gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+            print 'grads at theta from optimisation is ' + str(grads_at_resOptim)
+            flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
+            if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
+                print 'BFGS optmisation converged successfully.'
+            else:
+                print 'BFGS optmisation NOT converged.'
+             
         return [np.array(res[0, :][i]), np.array(res[2, :][i])]
-    def sampler(self, withPrior = False, onlyOptimCovPar = False, gpdtsMo=False, useGradsFlag = False, repeat = 3):
+
+    def sampler(self, withPrior = False, onlyOptimCovPar = False, gpdtsMo=False, useGradsFlag = False, repeat = 3, seed=188):
 
         model_bias = self.initial_model_bias() 
         print 'model bias from linear regression is :' + str(model_bias)
      
-        mu, cov = self.optim(withPrior, model_bias, onlyOptimCovPar, gpdtsMo, useGradsFlag,repeat)
+        mu, cov = self.optim(withPrior, model_bias, onlyOptimCovPar, gpdtsMo, useGradsFlag,repeat, seed)
         return [mu, cov] 
 
 class HMC_estimator():
@@ -1344,10 +1375,16 @@ class HMC_estimator():
                 except:
                     continue
                 if tmp_res['fun'] is not None:
-                    count += 1
-                    temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
-                    np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
-                    res.append(temp_res)
+                    if tmp_res['fun']<0:
+                        temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
+                        np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
+                        res.append(temp_res)
+                        break
+                    else:
+                        count += 1
+                        temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
+                        np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
+                        res.append(temp_res)
                 else:
                     continue      
             res = np.array(res)
@@ -1486,17 +1523,17 @@ class HMC_estimator():
 
 def read_Sim_Data():
     #read the samples of hatZs
-    X_hatZs = np.array(pd.read_csv('dataSimulated/X_hatZs_res100_a_bias_poly_deg2SEED30_lsZs[0.1]_sigZs1.5_gpdtsMoTrue_lsdtsMo[0.4]_sigdtsMo1.0.txt', sep=" ", header=None))
-    y_hatZs = np.array(pd.read_csv('dataSimulated/y_hatZs_res100_a_bias_poly_deg2SEED30_lsZs[0.1]_sigZs1.5_gpdtsMoTrue_lsdtsMo[0.4]_sigdtsMo1.0.txt', sep=" ", header=None)).reshape(X_hatZs.shape[0])
+    X_hatZs = np.array(pd.read_csv('dataSimulated/X_hatZs_res100_a_bias_poly_deg2SEED39_lsZs[0.1]_sigZs1.5_gpdtsMoTrue_lsdtsMo[0.2]_sigdtsMo1.0.txt', sep=" ", header=None))
+    y_hatZs = np.array(pd.read_csv('dataSimulated/y_hatZs_res100_a_bias_poly_deg2SEED39_lsZs[0.1]_sigZs1.5_gpdtsMoTrue_lsdtsMo[0.2]_sigdtsMo1.0.txt', sep=" ", header=None)).reshape(X_hatZs.shape[0])
 
     #read the samples of tildZs
-    X_tildZs_in = open('dataSimulated/X_tildZs_a_bias_poly_deg2SEED30_lsZs[0.1]_sigZs1.5_gpdtsMoTrue_lsdtsMo[0.4]_sigdtsMo1.0.pickle', 'rb')
+    X_tildZs_in = open('dataSimulated/X_tildZs_a_bias_poly_deg2SEED39_lsZs[0.1]_sigZs1.5_gpdtsMoTrue_lsdtsMo[0.2]_sigdtsMo1.0.pickle', 'rb')
     X_tildZs = pickle.load(X_tildZs_in)
 
-    y_tildZs_in = open('dataSimulated/y_tildZs_a_bias_poly_deg2SEED30_lsZs[0.1]_sigZs1.5_gpdtsMoTrue_lsdtsMo[0.4]_sigdtsMo1.0.pickle', 'rb')
+    y_tildZs_in = open('dataSimulated/y_tildZs_a_bias_poly_deg2SEED39_lsZs[0.1]_sigZs1.5_gpdtsMoTrue_lsdtsMo[0.2]_sigdtsMo1.0.pickle', 'rb')
     y_tildZs = pickle.load(y_tildZs_in)
 
-    areal_tildZs_in = open('dataSimulated/areal_tildZs_a_bias_poly_deg2SEED30_lsZs[0.1]_sigZs1.5_gpdtsMoTrue_lsdtsMo[0.4]_sigdtsMo1.0.pickle', 'rb')
+    areal_tildZs_in = open('dataSimulated/areal_tildZs_a_bias_poly_deg2SEED39_lsZs[0.1]_sigZs1.5_gpdtsMoTrue_lsdtsMo[0.2]_sigdtsMo1.0.pickle', 'rb')
     areal_tildZs = pickle.load(areal_tildZs_in)
 
     return[X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs]
@@ -1560,6 +1597,7 @@ if __name__ == '__main__':
 
     X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = simData.sim_hatTildZs_With_Plots(SEED = args.SEED, phi_Z_s = [args.lsZs], gp_deltas_modelOut = args.gpdtsMo, \
         phi_deltas_of_modelOut = [args.lsdtsMo], sigma_Zs = args.sigZs, sigma_deltas_of_modelOut = args.sigdtsMo)
+    #exit(-1)
     
     # X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = read_Sim_Data()
     # hmc = HMC_estimator(X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs)
@@ -1571,20 +1609,65 @@ if __name__ == '__main__':
 
     if args.fixMb:
         res = Gibbs_sampler(X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs)
-        mu, cov = res.sampler(args.withPrior, args.onlyOptimCovPar, args.gpdtsMo, args.useGradsFlag, args.repeat)
+        mu, cov = res.sampler(args.withPrior, args.onlyOptimCovPar, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
     else:
         mu, cov = optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrio, args.gpdtsMo, args.useGradsFlag, args.repeat)
 
     end = default_timer()
     print 'running time for optimisation with fixMb is ' + str(args.fixMb) + str(end - start) + ' seconds'
 
-    mu_out = open(output_folder  + '.pickle', 'wb')
-    pickle.dump(mu, mu_out)
-    mu_out.close()
-    cov_out = open(output_folder  + '.pickle', 'wb')
-    pickle.dump(cov, cov_out)
-    cov_out.close()
+    # computing the 95% confidence intervals  for each parameters
 
+    cov_pars = np.exp(np.array(mu[:-4]))
+    bias_pars = np.array(mu[-4:])
+    pars = np.concatenate((cov_pars, bias_pars))
+    pars = np.round(pars,1)
+    print 'estimated pars rounded to one decimal point :' + str(pars)
+
+    tmp = np.diag(np.array(cov))
+    variance_log_covPars = tmp[:-4]
+    variance_biasPars = tmp[-4:]
+
+    upper_interv_covPars = np.exp(mu[:-4] + 2 * np.sqrt(variance_log_covPars))
+    lower_interv_covPars = np.exp(mu[:-4] - 2 * np.sqrt(variance_log_covPars))
+    upper_interv_biasPars = bias_pars + 2 * np.sqrt(variance_biasPars)
+    lower_interv_biasPars = bias_pars - 2 * np.sqrt(variance_biasPars)
+    upper_interval = np.concatenate((upper_interv_covPars, upper_interv_biasPars))
+    lower_interval = np.concatenate((lower_interv_covPars, lower_interv_biasPars))
+    print 'upper_interval is ' + str(upper_interval)
+    print 'lower_interval is ' + str(lower_interval)
+
+    upper_interval_rounded = np.round(upper_interval, 1)
+    lower_interval_rounded = np.round(lower_interval, 1)
+    print 'rounded upper_interval is ' + str(upper_interval_rounded)
+    print 'rounded lower_interval is ' + str(lower_interval_rounded)
+
+    true_bias_pars = np.array([2., 5., 5., 3.])
+    if args.gpdtsMo:
+        true_gp_pars = np.array([args.sigZs, args.lsZs, 0.1, args.sigdtsMo, args.lsdtsMo])
+    else:
+        true_gp_pars = np.array([args.sigZs, args.lsZs, 0.1, args.sigdtsMo])
+
+    true_pars = np.concatenate((true_gp_pars, true_bias_pars))
+
+    flag_in_confiInterv = (true_pars >= lower_interval) & (true_pars <= upper_interval)
+    print 'status of within the 95 percent confidence interval is ' + str(flag_in_confiInterv)
+    count_in_confiInterv  = np.sum(np.array(map(int, flag_in_confiInterv)))
+    print 'number of estimated parameters within the 95 percent confidence interval is ' + str(count_in_confiInterv)
+
+    flag_in_confiInterv_r = (true_pars >= lower_interval_rounded) & (true_pars <= upper_interval_rounded)
+    print 'status of within the 95 percent confidence interval with rounding is ' + str(flag_in_confiInterv_r)
+    count_in_confiInterv_r  = np.sum(np.array(map(int, flag_in_confiInterv_r)))
+    print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
+
+    res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
+    'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded, \
+    'count_in_confiInterv':count_in_confiInterv, 'count_in_confiInterv_rounded':count_in_confiInterv_r}
+
+    res_out = open(output_folder  + 'resOptim.pkl', 'wb')
+    pickle.dump(res, res_out)
+    res_out.close()
+    
     # start = default_timer()
     # tmp = MH_estimator(X_hatZs, y_hatZs, X_tildZs, y_tildZs)
     # size = 1200
