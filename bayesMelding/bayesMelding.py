@@ -13,6 +13,7 @@ from scipy import integrate
 import argparse
 import os
 import simData
+import ldNetCDF
 from sklearn import linear_model
 from itertools import chain
 
@@ -127,8 +128,26 @@ def point_areal(X_hatZs, areal_coordinate, log_sigma_Zs, log_phi_Zs, b, pointAre
 
     return [avg_pointAreal_lower, avg_pointAreal_upper, grad_C_pointAreal_lower, grad_C_pointAreal_upper]
 
-def test_fun():
-    X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = read_Sim_Data()
+def test_fun(useCluster, SEED):
+    if useCluster:
+        X_hatZs_in = open('sampRealData/X_hatZs_seed' + str(SEED) + '.pkl', 'rb')
+        X_hatZs = pickle.load(X_hatZs_in) 
+     
+        y_hatZs_in = open('sampRealData/y_hatZs_seed' + str(SEED) + '.pkl', 'rb')
+        y_hatZs = pickle.load(y_hatZs_in) 
+
+        X_tildZs_in = open('sampRealData/X_tildZs_seed' + str(SEED) + '.pkl', 'rb')
+        X_tildZs = pickle.load(X_tildZs_in) 
+      
+        y_tildZs_in = open('sampRealData/y_tildZs_seed' + str(SEED) + '.pkl', 'rb')
+        y_tildZs = pickle.load(y_tildZs_in) 
+    else:
+        X_hatZs, y_hatZs, X_tildZs, y_tildZs = ldNetCDF.loadNetCdf(SEED =SEED)
+
+    print (X_hatZs.shape, y_hatZs.shape, X_tildZs.shape, y_tildZs.shape)
+    
+
+   
     theta = np.array([0.51390184, -2.30507058, -2.37142105, -0.57473654, -1.76136598,  1.94541264, 5.56365135, 5.26520738, 2.42106564])
 
     _, grads = log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_modelOut = True, withPrior= False, \
@@ -359,7 +378,9 @@ def log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_
     y = np.concatenate((y_hatZs, y_tildZs))
 
     l_chol_C = gpGaussLikeFuns.compute_L_chol(mat)
-    u = linalg.solve_triangular(l_chol_C.T, linalg.solve_triangular(l_chol_C, y - mu_hatTildZs, lower=True))     
+    
+    u = linalg.solve_triangular(l_chol_C.T, linalg.solve_triangular(l_chol_C, y - mu_hatTildZs, lower=True)) 
+
     joint_log_like  = -np.sum(np.log(np.diag(l_chol_C))) - 0.5 * np.dot(y - mu_hatTildZs, u) - 0.5 * n_bothZs * np.log(2*np.pi) 
 
     if withPrior:
@@ -873,9 +894,9 @@ def minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, 
     return minus_log_pos
     
 
-def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, useGradsFlag = False, repeat=3, method='BFGS', rbf=True, OMEGA = 1e-6): 
+def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, useGradsFlag = False, repeat=3, seed =188, method='BFGS', rbf=True, OMEGA = 1e-6): 
     print 'starting optimising when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
-        ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & useGradsFlag is ' + str(useGradsFlag) 
+         '& useGradsFlag is ' + str(useGradsFlag) 
     if rbf:
         num_par=1
     else:
@@ -888,52 +909,76 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
             if gpdtsMo:
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
                 np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), \
-                np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), modelBias), axis=0)
+                np.log(np.random.gamma(1., np.sqrt(num_par), num_par)),  np.zeros(4)), axis=0)
             else:
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), modelBias), axis=0)
-            print 'initial theta when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :' + str(initial_theta)
+                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4)), axis=0)
+            print 'initial theta when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) +  \
+            '& useGradsFlag is ' + str(useGradsFlag) +  ' :' + str(initial_theta)
             if useGradsFlag:
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                                x0=initial_theta, method=method,
                                jac=True,
-                               args=(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, gpdtsMo, withPrior),
+                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
                                options={'maxiter': 100, 'disp': False})
             else:
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
                                x0=initial_theta, method=method,
                                jac=False,
-                               args=(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, gpdtsMo, withPrior),
+                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
                                options={'maxiter': 100, 'disp': False})
             print 'The ' + str(count + 1) + ' round of optimisation'
         except:
             continue
         if tmp_res['fun'] is not None:
-            count += 1
-            temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
-            np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
-            res.append(temp_res)
+            if tmp_res['fun']<0:
+                temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
+                np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
+                res.append(temp_res)
+                file = 'logs/seed' + str(seed)+ 'successAtrep' + str(count)
+                f0 = open(file, 'wb')
+                f0.close()
+
+                break
+            else:
+                count += 1
+                temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
+                np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
+                res.append(temp_res)
         else:
             continue      
     res = np.array(res)
     res = res.T
     print 'minus_log_like for repeat ' + str(repeat) + ' is ' + str(res[1, :])
     i = np.argmin(res[1,:])
-
+    if np.array(res[1, :][i]) >0:
+        file = 'logs/unsuccessAll' + str(repeat)+ 'repSeed' + str(seed)
+        f1 = open(file, 'wb')
+        f1.close()
+ 
     print 'log_cov_parameters plus model bias after optimisation withPrior is ' + str(withPrior) + \
-     ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[0, :][i]))
+      ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[0, :][i]))
     print 'parameters after optimisation withPrior is ' + str(withPrior) + \
-    ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + \
+    ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + \
     str([np.exp(np.array(res[0, :][i])[:-4]), np.array(res[0, :][i])[-4:]])
     print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
-    ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[2, :][i]))
+     ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[2, :][i]))
     print 'Optim status withPrior is ' + str(withPrior) + \
-    ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[3, :][i]))
+    ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[3, :][i]))
     print 'Optim message withPrior is ' + str(withPrior) + \
-    ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[4, :][i]))
+    ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[4, :][i]))
     print 'Optim nit withPrior is ' + str(withPrior) + \
-    ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[5, :][i]))
+     ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[5, :][i]))
+
+    #check wheter the gradients at theta from optimisation are close to zeros (wchich indicates the convergence of the optimisation)
+    _, grads_at_resOptim = log_obsZs_giv_par_with_grad(np.array(res[0, :][i]), X_hatZs, y_hatZs, X_tildZs, y_tildZs,\
+     gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+    print 'grads at theta from optimisation is ' + str(grads_at_resOptim)
+    flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
+    if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
+        print 'BFGS optmisation converged successfully.'
+    else:
+        print 'BFGS optmisation NOT converged.'
 
     return [np.array(res[0, :][i]), np.array(res[2, :][i])]
 
@@ -1561,11 +1606,11 @@ def check_grads():
 if __name__ == '__main__':
     computeN3Cost.init(0)
     p = argparse.ArgumentParser()
-    p.add_argument('-SEED', type=int, dest='SEED', default=0, help='The simulation index')
+    p.add_argument('-SEED', type=int, dest='SEED', default=99, help='The simulation index')
     p.add_argument('-repeat', type=int, dest='repeat', default=1, help='number of repeats in optimisation')
     p.add_argument('-o', type=str, dest='output', default=None, help='Output folder')
     p.add_argument('-withPrior', dest='withPrior', default=False,  type=lambda x: (str(x).lower() == 'true'), help='flag for ML or MAP')
-    p.add_argument('-fixMb', dest='fixMb', default=True,  type=lambda x: (str(x).lower() == 'true'), \
+    p.add_argument('-fixMb', dest='fixMb', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for fixed model bias parameters from linear regression for intialisation in optimisition')
     p.add_argument('-onlyOptimCovPar', dest='onlyOptimCovPar', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for only optimising the cov parameters with fixed model bias from linear regression')
@@ -1574,31 +1619,88 @@ if __name__ == '__main__':
     p.add_argument('-lsdtsMo', type=float, dest='lsdtsMo', default=0.6, help='lengthscale of the GP covariance for deltas of model output')
     p.add_argument('-sigZs', type=float, dest='sigZs', default=1.5, help='sigma (marginal variance) of the GP covariance for Zs')
     p.add_argument('-sigdtsMo', type=float, dest='sigdtsMo', default=1.0, help='sigma (marginal variance) of the GP covariance for deltas of model output')
-    p.add_argument('-gpdtsMo', dest='gpdtsMo', default=False,  type=lambda x: (str(x).lower() == 'true'), \
+    p.add_argument('-gpdtsMo', dest='gpdtsMo', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether deltas of model output is a GP')
-    p.add_argument('-useGradsFlag', dest='useGradsFlag', default=False,  type=lambda x: (str(x).lower() == 'true'), \
+    p.add_argument('-useGradsFlag', dest='useGradsFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use analytically computed gradients to do optimisation')
+    p.add_argument('-useSimData', dest='useSimData', default=False,  type=lambda x: (str(x).lower() == 'true'), \
+        help='flag for whether to use simulated data')
+    p.add_argument('-useCluster', dest='useCluster', default=True,  type=lambda x: (str(x).lower() == 'true'), \
+        help='flag for whether to run code on Uni cluster')
+    p.add_argument('-oneRepPerJob', dest='oneRepPerJob', default=False,  type=lambda x: (str(x).lower() == 'true'), \
+        help='flag for whether to run one repeat for each job on cluster')
+    p.add_argument('-folder', type=int, dest='folder', default=0, help='The folder index')
+    p.add_argument('-cntry', type=str, dest='cntry', default=None, help='Country of the geo data used')
+    p.add_argument('-usecntryFlag', dest='usecntryFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
+        help='flag for whether to use data for a specific country')
+    p.add_argument('-numObs', type=int, dest='numObs', default=200, help='Number of observations used in modelling')
+    p.add_argument('-numMo', type=int, dest='numMo', default=150, help='Number of model outputs used in modelling')
     args = p.parse_args()
     if args.output is None: args.output = os.getcwd()
-    output_folder = args.output + '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_fixMb_' + str(args.fixMb) + '_onlyOptimCovPar_' + str(args.onlyOptimCovPar) + \
-    '_poly_deg_' + str(args.poly_deg) + '_lsZs_' + str(args.lsZs) + '_lsdtsMo_' + str(args.lsdtsMo) \
-    + '_sigZs_' + str(args.sigZs) + '_sigdtsMo_' + str(args.sigdtsMo) + '_gpdtsMo_' + str(args.gpdtsMo) + \
-    '_useGradsFlag_' + str(args.useGradsFlag) + '_repeat' + str(args.repeat)
+    if args.useSimData:  
+        output_folder = args.output + '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_fixMb_' + str(args.fixMb) + '_onlyOptimCovPar_' + str(args.onlyOptimCovPar) + \
+        '_poly_deg_' + str(args.poly_deg) + '_lsZs_' + str(args.lsZs) + '_lsdtsMo_' + str(args.lsdtsMo) \
+        + '_sigZs_' + str(args.sigZs) + '_sigdtsMo_' + str(args.sigdtsMo) + '_gpdtsMo_' + str(args.gpdtsMo) + \
+        '_useGradsFlag_' + str(args.useGradsFlag) + '_repeat' + str(args.repeat)
+    else: 
+        if args.usecntryFlag:
+            if args.oneRepPerJob:
+                output_folder = args.output + '/cntry_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + \
+                '/folder_' + str(args.folder) + '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_poly_deg_' + str(args.poly_deg) + \
+                '_repeat' + str(args.repeat) 
+            else:
+                output_folder = args.output + '/cntry_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + \
+                '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_poly_deg_' + str(args.poly_deg) + '_repeat' + str(args.repeat) 
+        else:
+            if args.oneRepPerJob:
+                output_folder = args.output + '/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/folder_' + str(args.folder) + \
+                '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_poly_deg_' + str(args.poly_deg) + '_repeat' + str(args.repeat)
+            else:
+                output_folder = args.output + '/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + \
+                '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_poly_deg_' + str(args.poly_deg) + '_repeat' + str(args.repeat)
+
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     output_folder += '/'
     print 'Output: ' + output_folder
 
     # check_grads()
-    # test_fun()
+    # test_fun(args.useCluster, args.SEED)
     # exit(-1)
 
     start = default_timer()
 
-    X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = simData.sim_hatTildZs_With_Plots(SEED = args.SEED, phi_Z_s = [args.lsZs], gp_deltas_modelOut = args.gpdtsMo, \
-        phi_deltas_of_modelOut = [args.lsdtsMo], sigma_Zs = args.sigZs, sigma_deltas_of_modelOut = args.sigdtsMo)
-    #exit(-1)
+    # X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = simData.sim_hatTildZs_With_Plots(SEED = args.SEED, phi_Z_s = [args.lsZs], gp_deltas_modelOut = args.gpdtsMo, \
+    #     phi_deltas_of_modelOut = [args.lsdtsMo], sigma_Zs = args.sigZs, sigma_deltas_of_modelOut = args.sigdtsMo)
     
+    if args.useCluster:
+        if args.usecntryFlag:
+            X_hatZs_in = open('sampRealData/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/X_hatZs_seed' + str(args.SEED) + '.pkl', 'rb')
+            X_hatZs = pickle.load(X_hatZs_in) 
+         
+            y_hatZs_in = open('sampRealData/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/y_hatZs_seed' + str(args.SEED) + '.pkl', 'rb')
+            y_hatZs = pickle.load(y_hatZs_in) 
+
+            X_tildZs_in = open('sampRealData/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/X_tildZs_seed' + str(args.SEED) + '.pkl', 'rb')
+            X_tildZs = pickle.load(X_tildZs_in) 
+          
+            y_tildZs_in = open('sampRealData/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/y_tildZs_seed' + str(args.SEED) + '.pkl', 'rb')
+            y_tildZs = pickle.load(y_tildZs_in)
+        else:
+            X_hatZs_in = open('sampRealData/X_hatZs_seed' + str(args.SEED) + '.pkl', 'rb')
+            X_hatZs = pickle.load(X_hatZs_in) 
+         
+            y_hatZs_in = open('sampRealData/y_hatZs_seed' + str(args.SEED) + '.pkl', 'rb')
+            y_hatZs = pickle.load(y_hatZs_in) 
+
+            X_tildZs_in = open('sampRealData/X_tildZs_seed' + str(args.SEED) + '.pkl', 'rb')
+            X_tildZs = pickle.load(X_tildZs_in) 
+          
+            y_tildZs_in = open('sampRealData/y_tildZs_seed' + str(args.SEED) + '.pkl', 'rb')
+            y_tildZs = pickle.load(y_tildZs_in)
+    else:
+        X_hatZs, y_hatZs, X_tildZs, y_tildZs = ldNetCDF.loadNetCdf(SEED = args.SEED)
+
     # X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = read_Sim_Data()
     # hmc = HMC_estimator(X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs)
     # res = hmc.estimate()
@@ -1611,7 +1713,7 @@ if __name__ == '__main__':
         res = Gibbs_sampler(X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs)
         mu, cov = res.sampler(args.withPrior, args.onlyOptimCovPar, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
     else:
-        mu, cov = optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrio, args.gpdtsMo, args.useGradsFlag, args.repeat)
+        mu, cov = optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
 
     end = default_timer()
     print 'running time for optimisation with fixMb is ' + str(args.fixMb) + str(end - start) + ' seconds'
@@ -1642,32 +1744,39 @@ if __name__ == '__main__':
     print 'rounded upper_interval is ' + str(upper_interval_rounded)
     print 'rounded lower_interval is ' + str(lower_interval_rounded)
 
-    true_bias_pars = np.array([2., 5., 5., 3.])
-    if args.gpdtsMo:
-        true_gp_pars = np.array([args.sigZs, args.lsZs, 0.1, args.sigdtsMo, args.lsdtsMo])
+    if args.useSimData:
+        true_bias_pars = np.array([2., 5., 5., 3.])
+        if args.gpdtsMo:
+            true_gp_pars = np.array([args.sigZs, args.lsZs, 0.1, args.sigdtsMo, args.lsdtsMo])
+        else:
+            true_gp_pars = np.array([args.sigZs, args.lsZs, 0.1, args.sigdtsMo])
+
+        true_pars = np.concatenate((true_gp_pars, true_bias_pars))
+
+        flag_in_confiInterv = (true_pars >= lower_interval) & (true_pars <= upper_interval)
+        print 'status of within the 95 percent confidence interval is ' + str(flag_in_confiInterv)
+        count_in_confiInterv  = np.sum(np.array(map(int, flag_in_confiInterv)))
+        print 'number of estimated parameters within the 95 percent confidence interval is ' + str(count_in_confiInterv)
+
+        flag_in_confiInterv_r = (true_pars >= lower_interval_rounded) & (true_pars <= upper_interval_rounded)
+        print 'status of within the 95 percent confidence interval with rounding is ' + str(flag_in_confiInterv_r)
+        count_in_confiInterv_r  = np.sum(np.array(map(int, flag_in_confiInterv_r)))
+        print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
+
+        res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
+        'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded, \
+        'count_in_confiInterv':count_in_confiInterv, 'count_in_confiInterv_rounded':count_in_confiInterv_r}
+
+        res_out = open(output_folder  + 'resOptim.pkl', 'wb')
+        pickle.dump(res, res_out)
+        res_out.close()
     else:
-        true_gp_pars = np.array([args.sigZs, args.lsZs, 0.1, args.sigdtsMo])
-
-    true_pars = np.concatenate((true_gp_pars, true_bias_pars))
-
-    flag_in_confiInterv = (true_pars >= lower_interval) & (true_pars <= upper_interval)
-    print 'status of within the 95 percent confidence interval is ' + str(flag_in_confiInterv)
-    count_in_confiInterv  = np.sum(np.array(map(int, flag_in_confiInterv)))
-    print 'number of estimated parameters within the 95 percent confidence interval is ' + str(count_in_confiInterv)
-
-    flag_in_confiInterv_r = (true_pars >= lower_interval_rounded) & (true_pars <= upper_interval_rounded)
-    print 'status of within the 95 percent confidence interval with rounding is ' + str(flag_in_confiInterv_r)
-    count_in_confiInterv_r  = np.sum(np.array(map(int, flag_in_confiInterv_r)))
-    print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
-
-    res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
-    'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded, \
-    'count_in_confiInterv':count_in_confiInterv, 'count_in_confiInterv_rounded':count_in_confiInterv_r}
-
-    res_out = open(output_folder  + 'resOptim.pkl', 'wb')
-    pickle.dump(res, res_out)
-    res_out.close()
-    
+        res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
+    'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded}
+        res_out = open(output_folder  + 'resOptim.pkl', 'wb')
+        pickle.dump(res, res_out)
+        res_out.close()
+        
     # start = default_timer()
     # tmp = MH_estimator(X_hatZs, y_hatZs, X_tildZs, y_tildZs)
     # size = 1200
