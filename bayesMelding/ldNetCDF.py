@@ -149,7 +149,7 @@ def gen_img_25_storms(SEED=260, num_hatZs=200, num_tildZs = 150, flagforLdAllSto
 
     return [X_hatZs, y_hatZs, X_tildZs, y_tildZs]
 
-def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, cntry = 'FR', flagUseAvgMo = False):
+def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, crossValFlag=True, fold=10, cntry = 'FR', flagUseAvgMo = False):
     np.random.seed(SEED)
     plt.figure()
     mp1= Basemap(projection='rotpole',lon_0=13,o_lon_p=193,o_lat_p=41,\
@@ -314,7 +314,7 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, cntry = 'FR', flagUseA
         l, r, b, t = plt.axis() 
 
         plt.scatter(dataObs_within_squareAround_FR[:, 0], dataObs_within_squareAround_FR[:, 1], \
-            c = dataObs_within_squareAround_FR[:, 2], cmap=plt.cm.jet, vmin=0, vmax=z_max,  edgecolors='black')
+            c = dataObs_within_squareAround_FR[:, 2], cmap=plt.cm.jet, vmin=0, vmax=z_max, edgecolors='black')
         plt.xlim(l, r)
         plt.ylim(b, t)
         plt.savefig(analysis_file[:17] + '_' + str(cntry) +'.png')
@@ -323,6 +323,8 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, cntry = 'FR', flagUseA
         idx = np.random.randint(0, dataObs_within_squareAround_FR.shape[0], num_hatZs)
         X_hatZs = dataObs_within_squareAround_FR[idx, :2]
         y_hatZs = dataObs_within_squareAround_FR[idx, 2]
+        #remove the mean of the observations
+        y_hatZs = y_hatZs - np.mean(y_hatZs)
 
         idx_sampleTildZs = np.random.randint(0, dataMo_within_squareAround_FR.shape[0], num_tildZs)
         X_tildZs_tmp = dataMo_within_squareAround_FR[idx_sampleTildZs, :2]
@@ -330,26 +332,74 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, cntry = 'FR', flagUseA
         X_tildZs = np.array([X_tildZs_tmp[i].reshape(1, X_tildZs_tmp.shape[1]) for i in range(X_tildZs_tmp.shape[0])])
         y_tildZs = dataMo_within_squareAround_FR[idx_sampleTildZs, 2]
 
-        output_folder ='sampRealData/'+ analysis_file[:17] + '_' + str(cntry) + '_numObs_' + str(num_hatZs) + '_numMo_' + str(num_tildZs) 
+        areal_hatZs = []
+        for i in range(len(y_tildZs)):
+            idx_min_dist = np.argmin(np.array([np.linalg.norm(X_tildZs[i] - X_hatZs[j]) for j in range(len(y_hatZs))]))
+            areal_hatZs.append(y_hatZs[idx_min_dist])
+        areal_hatZs = np.array(areal_hatZs)
+
+        output_folder ='sampRealData/'+ analysis_file[:17] + '_' + str(cntry) + '_numObs_' + str(num_hatZs) + \
+        '_numMo_' + str(num_tildZs) +  '/seed' + str(SEED)
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
         output_folder += '/'
-        X_hatZs_out = open(output_folder + 'X_hatZs_seed' + str(SEED) + '.pkl', 'wb')
-        pickle.dump(X_hatZs, X_hatZs_out) 
-        X_hatZs_out.close()
-        y_hatZs_out = open(output_folder + 'y_hatZs_seed' + str(SEED) + '.pkl', 'wb')
-        pickle.dump(y_hatZs, y_hatZs_out) 
-        y_hatZs_out.close()
-        X_tildZs_out = open(output_folder + 'X_tildZs_seed' + str(SEED) + '.pkl', 'wb')
-        pickle.dump(X_tildZs, X_tildZs_out) 
-        X_tildZs_out.close()
-        y_tildZs_out = open(output_folder + 'y_tildZs_seed' + str(SEED) + '.pkl', 'wb')
-        pickle.dump(y_tildZs, y_tildZs_out) 
-        y_tildZs_out.close()
-
-        return [X_hatZs, y_hatZs, X_tildZs, y_tildZs]
-
-
+        num_hatZs = X_hatZs.shape[0]
+        if crossValFlag:
+            mask0 = np.ones(num_hatZs, dtype=bool)
+            mask_idx = np.arange(X_hatZs.shape[0])
+            num_per_fold = num_hatZs/fold
+            for i in range(fold):
+                include_idx = mask_idx[i * num_per_fold:(i + 1) * num_per_fold]
+                mask = np.copy(mask0)
+                mask[include_idx] = False
+                X_train = X_hatZs[mask, :] 
+                y_train = y_hatZs[mask]
+                X_test = X_hatZs[~mask, :]
+                y_test = y_hatZs[~mask]
+                if i == fold -1:
+                    include_idx = mask_idx[i * num_per_fold:(i + 1) * num_per_fold + num_hatZs % fold]
+                    mask = np.copy(mask0)
+                    mask[include_idx] = False
+                    X_train = X_hatZs[mask, :] 
+                    y_train = y_hatZs[mask]
+                    X_test = X_hatZs[~mask, :]
+                    y_test = y_hatZs[~mask]
+                output_folder_cv = output_folder + 'fold_' + str(i)
+                if not os.path.exists(output_folder_cv):
+                    os.makedirs(output_folder_cv)
+                output_folder_cv += '/'
+                X_train_out = open(output_folder_cv + 'X_train.pkl', 'wb')
+                pickle.dump(X_train, X_train_out)
+                y_train_out = open(output_folder_cv + 'y_train.pkl', 'wb')
+                pickle.dump(y_train, y_train_out)
+                X_test_out = open(output_folder_cv  + 'X_test.pkl', 'wb')
+                pickle.dump(X_test, X_test_out)
+                y_test_out = open(output_folder_cv + 'y_test.pkl', 'wb')
+                pickle.dump(y_test, y_test_out)
+                X_tildZs_out = open(output_folder_cv + 'X_tildZs.pkl', 'wb')
+                pickle.dump(X_tildZs, X_tildZs_out) 
+                X_tildZs_out.close()
+                y_tildZs_out = open(output_folder_cv + 'y_tildZs.pkl', 'wb')
+                pickle.dump(y_tildZs, y_tildZs_out) 
+                y_tildZs_out.close()
+            return [X_train, y_train, X_test, y_test, X_tildZs, y_tildZs]
+        else:
+            X_hatZs_out = open(output_folder + 'X_hatZs.pkl', 'wb')
+            pickle.dump(X_hatZs, X_hatZs_out) 
+            X_hatZs_out.close()
+            y_hatZs_out = open(output_folder + 'y_hatZs.pkl', 'wb')
+            pickle.dump(y_hatZs, y_hatZs_out) 
+            y_hatZs_out.close()
+            X_tildZs_out = open(output_folder + 'X_tildZs.pkl', 'wb')
+            pickle.dump(X_tildZs, X_tildZs_out) 
+            X_tildZs_out.close()
+            y_tildZs_out = open(output_folder + 'y_tildZs.pkl', 'wb')
+            pickle.dump(y_tildZs, y_tildZs_out) 
+            y_tildZs_out.close()
+            areal_hatZs_out = open(output_folder + 'areal_hatZs.pkl', 'wb')
+            pickle.dump(areal_hatZs, areal_hatZs_out) 
+            y_tildZs_out.close()
+            return [X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_hatZs]
 
 # The following code translated from R is NOT working for Python Basemap.
 # def rotateCoords(coords, pole = [193, 41]):
@@ -375,7 +425,6 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, cntry = 'FR', flagUseA
 #     rCoords = 180. * np.array([rlong, rlatt])/np.pi
 #     rCoords = rCoords.T
 #     return rCoords
-
 def find_cntryNames(coords):
     try:
         res = get_country(coords)
@@ -401,9 +450,11 @@ if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument('-SEED', type=int, dest='SEED', default=99, help='The simulation index')
     p.add_argument('-numObs', type=int, dest='numObs', default=328, help='Number of observations used in modelling')
-    p.add_argument('-numMo', type=int, dest='numMo', default=150, help='Number of model outputs used in modelling')
+    p.add_argument('-numMo', type=int, dest='numMo', default=300, help='Number of model outputs used in modelling')
+    p.add_argument('-crossValFlag', dest='crossValFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
+        help='whether to validate the model using cross validation')
     args = p.parse_args()
-    loadNetCdf(args.SEED, args.numObs, args.numMo)
+    loadNetCdf(args.SEED, args.numObs, args.numMo, args.crossValFlag)
 
 
 

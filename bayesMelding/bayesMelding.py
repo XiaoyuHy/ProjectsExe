@@ -13,7 +13,7 @@ from scipy import integrate
 import argparse
 import os
 import simData
-import ldNetCDF
+# import ldNetCDF
 from sklearn import linear_model
 from itertools import chain
 
@@ -158,7 +158,7 @@ def test_fun(useCluster, SEED):
     # initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
     #                  np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), \
     #                  np.log(np.random.gamma(1., np.sqrt(num_par), num_par))), axis=0)
-    modelBias = np.array([ 1.97191694,  5.47022754 , 7.22854712, -1.22452898])
+    modelBias = np.array([1.97191694,  5.47022754 , 7.22854712, -1.22452898])
     # test = minus_log_obsZs_giv_par_of_cov(initial_theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior, modelBias, gp_deltas_modelOut = True, \
     # a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6)
     initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
@@ -931,56 +931,42 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
         except:
             continue
         if tmp_res['fun'] is not None:
-            if tmp_res['fun']<0:
-                temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
-                np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
-                res.append(temp_res)
-                file = 'logs/seed' + str(seed)+ 'successAtrep' + str(count)
-                f0 = open(file, 'wb')
-                f0.close()
+            temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
+            np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
+            res.append(temp_res)
 
+            print 'theta from the ' + str(count + 1) + ' round of optimisation is ' + str(tmp_res['x'])
+            _, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
+                gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+            print 'grads at theta from the ' + str(count + 1) + ' round of optimisation is ' + str(grads_at_resOptim)
+            flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
+            if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
+                print 'BFGS optmisation converged successfully at the '+ str(count + 1) + ' round of optimisation.'
+                res = np.array(res)
+                res = res.T
+                print 'minus_log_like for repeat ' + str(count + 1)+ ' is ' + str(res[1, :])
+                print 'parameters after optimisation withPrior is ' + str(withPrior) + \
+                ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + \
+                str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]])
+                print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
+                 ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(tmp_res['hess_inv']))
+                print 'Optim status withPrior is ' + str(withPrior) + \
+                ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(tmp_res['success']))
+                print 'Optim message withPrior is ' + str(withPrior) + \
+                ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(tmp_res['message']))
+                print 'Optim nit withPrior is ' + str(withPrior) + \
+                 ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(tmp_res['nit']))
                 break
             else:
-                count += 1
-                temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
-                np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
-                res.append(temp_res)
+                if count == (repeat -1):
+                    file = 'logs/unsuccessAll' + str(repeat)+ 'Seed' + str(seed)
+                    f1 = open(file, 'wb')
+                    f1.close()
+                count += 1        
         else:
             continue      
-    res = np.array(res)
-    res = res.T
-    print 'minus_log_like for repeat ' + str(repeat) + ' is ' + str(res[1, :])
-    i = np.argmin(res[1,:])
-    if np.array(res[1, :][i]) >0:
-        file = 'logs/unsuccessAll' + str(repeat)+ 'repSeed' + str(seed)
-        f1 = open(file, 'wb')
-        f1.close()
- 
-    print 'log_cov_parameters plus model bias after optimisation withPrior is ' + str(withPrior) + \
-      ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[0, :][i]))
-    print 'parameters after optimisation withPrior is ' + str(withPrior) + \
-    ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + \
-    str([np.exp(np.array(res[0, :][i])[:-4]), np.array(res[0, :][i])[-4:]])
-    print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
-     ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[2, :][i]))
-    print 'Optim status withPrior is ' + str(withPrior) + \
-    ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[3, :][i]))
-    print 'Optim message withPrior is ' + str(withPrior) + \
-    ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[4, :][i]))
-    print 'Optim nit withPrior is ' + str(withPrior) + \
-     ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[5, :][i]))
-
-    #check wheter the gradients at theta from optimisation are close to zeros (wchich indicates the convergence of the optimisation)
-    _, grads_at_resOptim = log_obsZs_giv_par_with_grad(np.array(res[0, :][i]), X_hatZs, y_hatZs, X_tildZs, y_tildZs,\
-     gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
-    print 'grads at theta from optimisation is ' + str(grads_at_resOptim)
-    flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
-    if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
-        print 'BFGS optmisation converged successfully.'
-    else:
-        print 'BFGS optmisation NOT converged.'
-
-    return [np.array(res[0, :][i]), np.array(res[2, :][i])]
+    
+    return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'])]
 
 class MH_estimator():
     def __init__(self, X_hatZs, y_hatZs, X_tildZs, y_tildZs):
@@ -1097,17 +1083,17 @@ class MH_estimator():
         return [sample_mod, sample_mean, sample_std]
 
 class Gibbs_sampler():
-    def __init__(self, X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs):
+    def __init__(self, X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_hatZs):
         self.X_hatZs = X_hatZs
         self.y_hatZs = y_hatZs
         self.X_tildZs = X_tildZs
         self.y_tildZs = y_tildZs
-        self.areal_tildZs = areal_tildZs
+        self.areal_hatZs = areal_hatZs
 
     def initial_model_bias(self):
         tmp0 = [np.mean(self.X_tildZs[i], axis =0) for i in range(len(self.X_tildZs))]
         tmp0 = np.array(tmp0)
-        tmp1 = [np.mean(self.areal_tildZs[i]) for i in range(len(self.areal_tildZs))]
+        tmp1 = [np.mean(self.areal_hatZs[i]) for i in range(len(self.areal_hatZs))]
         tmp1= np.array(tmp1).reshape(len(tmp1), 1)
         X = np.hstack((tmp1, tmp0))
         regr = linear_model.LinearRegression()
@@ -1600,7 +1586,7 @@ def check_grads():
     else:
         print ("\033[92m" + "Computing the gradients works perfectly fine! difference = " + str(difference) + "\033[0m")
     
-    return difference
+    return difference     
 
 
 if __name__ == '__main__':
@@ -1635,6 +1621,9 @@ if __name__ == '__main__':
         help='flag for whether to use data for a specific country')
     p.add_argument('-numObs', type=int, dest='numObs', default=200, help='Number of observations used in modelling')
     p.add_argument('-numMo', type=int, dest='numMo', default=150, help='Number of model outputs used in modelling')
+    p.add_argument('-crossValFlag', dest='crossValFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
+        help='whether to validate the model using cross validation')
+    p.add_argument('-idxFold', type=int, dest='idxFold', default=9, help='the index for the fold for cross validation')
     args = p.parse_args()
     if args.output is None: args.output = os.getcwd()
     if args.useSimData:  
@@ -1672,34 +1661,42 @@ if __name__ == '__main__':
 
     # X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = simData.sim_hatTildZs_With_Plots(SEED = args.SEED, phi_Z_s = [args.lsZs], gp_deltas_modelOut = args.gpdtsMo, \
     #     phi_deltas_of_modelOut = [args.lsdtsMo], sigma_Zs = args.sigZs, sigma_deltas_of_modelOut = args.sigdtsMo)
-    
+    input_folder = 'sampRealData/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
+    + '/seed' + str(args.SEED) + '/fold_' + str(args.idxFold) + '/'
     if args.useCluster:
         if args.usecntryFlag:
-            X_hatZs_in = open('sampRealData/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/X_hatZs_seed' + str(args.SEED) + '.pkl', 'rb')
-            X_hatZs = pickle.load(X_hatZs_in) 
-         
-            y_hatZs_in = open('sampRealData/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/y_hatZs_seed' + str(args.SEED) + '.pkl', 'rb')
-            y_hatZs = pickle.load(y_hatZs_in) 
+            if args.crossValFlag:
+                X_train_in = open(input_folder + 'X_train.pkl', 'rb')
+                X_train = pickle.load(X_train_in) 
+                y_train_in = open(input_folder + 'y_train.pkl', 'rb')
+                y_train = pickle.load(y_train_in) 
+                
+                X_test_in = open(input_folder + 'X_test.pkl', 'rb')
+                X_test = pickle.load(X_test_in)
+                y_test_in = open(input_folder + 'y_test.pkl', 'rb')
+                y_test = pickle.load(y_test_in) 
 
-            X_tildZs_in = open('sampRealData/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/X_tildZs_seed' + str(args.SEED) + '.pkl', 'rb')
-            X_tildZs = pickle.load(X_tildZs_in) 
-          
-            y_tildZs_in = open('sampRealData/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/y_tildZs_seed' + str(args.SEED) + '.pkl', 'rb')
-            y_tildZs = pickle.load(y_tildZs_in)
+                X_tildZs_in = open(input_folder + 'X_tildZs.pkl', 'rb')
+                X_tildZs = pickle.load(X_tildZs_in)
+                y_tildZs_in = open(input_folder + 'y_tildZs.pkl', 'rb')
+                y_tildZs = pickle.load(y_tildZs_in)
         else:
-            X_hatZs_in = open('sampRealData/X_hatZs_seed' + str(args.SEED) + '.pkl', 'rb')
+            X_hatZs_in = open(input_folder + 'X_hatZs.pkl', 'rb')
             X_hatZs = pickle.load(X_hatZs_in) 
          
-            y_hatZs_in = open('sampRealData/y_hatZs_seed' + str(args.SEED) + '.pkl', 'rb')
+            y_hatZs_in = open(input_folder + 'y_hatZs.pkl', 'rb')
             y_hatZs = pickle.load(y_hatZs_in) 
 
-            X_tildZs_in = open('sampRealData/X_tildZs_seed' + str(args.SEED) + '.pkl', 'rb')
+            X_tildZs_in = open(input_folder + 'X_tildZs.pkl', 'rb')
             X_tildZs = pickle.load(X_tildZs_in) 
           
-            y_tildZs_in = open('sampRealData/y_tildZs_seed' + str(args.SEED) + '.pkl', 'rb')
+            y_tildZs_in = open(input_folder + 'y_tildZs.pkl', 'rb')
             y_tildZs = pickle.load(y_tildZs_in)
+
+            areal_hatZs_in = open(input_folder + 'areal_hatZs.pkl', 'rb')
+            areal_hatZs = pickle.load(y_tildZs_in)
     else:
-        X_hatZs, y_hatZs, X_tildZs, y_tildZs = ldNetCDF.loadNetCdf(SEED = args.SEED)
+        X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_hatZs = ldNetCDF.loadNetCdf(SEED = args.SEED)
 
     # X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = read_Sim_Data()
     # hmc = HMC_estimator(X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs)
@@ -1708,12 +1705,18 @@ if __name__ == '__main__':
     # end = default_timer()
 
     # print 'running time for HMC sampler is '  + str(end - start) + ' seconds'
-
-    if args.fixMb:
-        res = Gibbs_sampler(X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs)
-        mu, cov = res.sampler(args.withPrior, args.onlyOptimCovPar, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
+    if args.crossValFlag:
+        if args.fixMb:
+            res = Gibbs_sampler(X_train, y_train, X_tildZs, y_tildZs, areal_hatZs)
+            mu, cov = res.sampler(args.withPrior, args.onlyOptimCovPar, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
+        else:
+            mu, cov = optimise(X_train, y_train, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
     else:
-        mu, cov = optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
+        if args.fixMb:
+            res = Gibbs_sampler(X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_hatZs)
+            mu, cov = res.sampler(args.withPrior, args.onlyOptimCovPar, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
+        else:
+            mu, cov = optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
 
     end = default_timer()
     print 'running time for optimisation with fixMb is ' + str(args.fixMb) + str(end - start) + ' seconds'
@@ -1776,6 +1779,8 @@ if __name__ == '__main__':
         res_out = open(output_folder  + 'resOptim.pkl', 'wb')
         pickle.dump(res, res_out)
         res_out.close()
+        predic_accuracy = gpGaussLikeFuns.predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs)
+        print 'predic_accuracy for seed ' + str(args.SEED) + ' fold ' + str(args.idxFold) + ' is ' + '{:.1%}'.format(predic_accuracy)
         
     # start = default_timer()
     # tmp = MH_estimator(X_hatZs, y_hatZs, X_tildZs, y_tildZs)
