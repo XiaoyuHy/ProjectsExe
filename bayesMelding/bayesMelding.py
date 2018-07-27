@@ -301,7 +301,7 @@ def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_mod
 
     return log_pos
 
-def log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_modelOut = False, withPrior= False, \
+def log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_modelOut = True, withPrior= False, \
     a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
@@ -490,9 +490,20 @@ def log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_
     grads_a_bias = np.dot(X_all_extend.T, u)
     grads_all_pars = np.concatenate((grads_par_covPars, grads_a_bias))
 
+    # Add penatly if all postitive parameters are not in the range of [0.1, 100]
+    if log_phi_Zs < -2.3 or log_phi_Zs > 4.6 or log_sigma_Zs < -2.3 or log_sigma_Zs > 4.6 or \
+    log_obs_noi_scale < -2.3 or log_obs_noi_scale > 4.6 or \
+     log_sigma_deltas_of_modelOut < -2.3 or log_sigma_deltas_of_modelOut > 4.6  or \
+     log_phi_deltas_of_modelOut < -2.3 or log_phi_deltas_of_modelOut > 4.6:
+        # log_pos = log_pos + 0.1 * (log_phi_Zs + 20)**8
+        # deri_log_phi_Zs_penalty = 0.8 * (log_phi_Zs + 20)**7
+        # grads_par_covPars[1] = grads_par_covPars[1] + deri_log_phi_Zs_penalty
+        # grads_all_pars = np.concatenate((grads_par_covPars, grads_a_bias))
+        log_pos = log_pos + 10**20
+
     return [log_pos, grads_all_pars]
 
-def minus_log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_modelOut = False, withPrior= False, \
+def minus_log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_modelOut = True, withPrior= False, \
     a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
@@ -678,6 +689,17 @@ def minus_log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZ
 
     grads_a_bias = np.dot(X_all_extend.T, u)
     grads_all_pars = np.concatenate((grads_par_covPars, grads_a_bias))
+
+    # Add penatly if all postitive parameters are not in the range of [0.1, 100]
+    if log_phi_Zs < -2.3 or log_phi_Zs > 4.6 or log_sigma_Zs < -2.3 or log_sigma_Zs > 4.6 or \
+    log_obs_noi_scale < -2.3 or log_obs_noi_scale > 4.6 or \
+     log_sigma_deltas_of_modelOut < -2.3 or log_sigma_deltas_of_modelOut > 4.6  or \
+     log_phi_deltas_of_modelOut < -2.3 or log_phi_deltas_of_modelOut > 4.6:
+        # log_pos = log_pos + 0.1 * (log_phi_Zs + 20)**8
+        # deri_log_phi_Zs_penalty = 0.8 * (log_phi_Zs + 20)**7
+        # grads_par_covPars[1] = grads_par_covPars[1] + deri_log_phi_Zs_penalty
+        # grads_all_pars = np.concatenate((grads_par_covPars, grads_a_bias))
+        log_pos = log_pos + 10**20
 
     minus_log_pos = -log_pos
     minus_grads_all_pars = - grads_all_pars
@@ -892,7 +914,68 @@ def minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, 
         minus_log_pos = - joint_log_like
 
     return minus_log_pos
-    
+
+def hmcSampler(mu, hess_inv, grad_current_pos, log_like_current_pos, X_hatZs, y_hatZs, X_tildZs,\
+ y_tildZs, epsilon0=0.15, minL=6, maxL=12, OMEGA = 1e-6):
+    print 'diagonal of hess_inv ' + str(np.diag(hess_inv))
+    while True:
+        l_chol_hess_inv = np.linalg.cholesky(hess_inv)
+        minusHessian = linalg.solve_triangular(l_chol_hess_inv.T, linalg.solve_triangular(l_chol_hess_inv, np.eye(len(mu)), lower=True))
+        massMatrix = minusHessian
+
+        l_chol_M = np.linalg.cholesky(massMatrix)
+
+        current_position = mu
+
+
+        current_momentum = np.dot(l_chol_M, np.random.normal(size=[len(current_position), 1])).reshape(len(current_position))
+        tmp0 =  linalg.solve_triangular(l_chol_M, current_momentum, lower=True)
+        current_kinetic = 0.5 * np.inner(tmp0,tmp0)
+
+        proposed_momentum= current_momentum
+        proposed_position = current_position
+        grad_proposed_pos = grad_current_pos
+
+        premature_reject = 0      
+        L = np.random.randint(minL,maxL,1)
+        print 'L is' + str(L)
+
+        for k in range(L):
+            print 'k is ' + str(k)
+            epsilon = np.random.exponential(epsilon0) #Randomization of the stepsize
+            print 'epsilon is ' + str(epsilon)
+            p_half= proposed_momentum + epsilon/2. * grad_proposed_pos
+
+            if (np.isinf(p_half) + np.isnan(p_half)).any():
+                premature_reject = 1
+                break
+            proposed_position = proposed_position + epsilon * linalg.solve_triangular(l_chol_M.T, linalg.solve_triangular(l_chol_M, p_half, lower=True))
+        
+            if np.max(np.abs(proposed_position)) > 20:
+                premature_reject =1 
+                break
+
+            log_like_proposed_pos, grad_proposed_pos = log_obsZs_giv_par_with_grad(proposed_position, X_hatZs, y_hatZs, X_tildZs, y_tildZs)
+
+            proposed_momentum = p_half + epsilon/2. * grad_proposed_pos             
+            if (np.isinf(proposed_momentum) + np.isnan(proposed_momentum)).any():
+                premature_reject =1
+                break
+
+            tmp1 = linalg.solve_triangular(l_chol_M, proposed_momentum, lower=True)
+            proposed_kinetic = 0.5 * np.inner(tmp1,tmp1)
+
+        if premature_reject==1:
+            A = -np.inf
+        if premature_reject==0:
+            A = np.min([0, log_like_proposed_pos - log_like_current_pos - proposed_kinetic + current_kinetic])
+        if np.isnan(A):
+            A = - np.inf
+        print 'acceptance status is ' + str( -np.random.exponential(1) < A)
+        if -np.random.exponential(1) < A:
+            break
+    return [proposed_position, grad_proposed_pos, log_like_proposed_pos]
+   
 
 def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, useGradsFlag = False, repeat=3, seed =188, method='BFGS', rbf=True, OMEGA = 1e-6): 
     print 'starting optimising when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
@@ -905,10 +988,10 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
     count = 0
    
     while count != repeat:
-        try:
+        try:#find one intial value for which the optimisation works
             if gpdtsMo:
-                initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), \
+                initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 3.5, 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 3.5, 1)), \
                 np.log(np.random.gamma(1., np.sqrt(num_par), num_par)),  np.zeros(4)), axis=0)
             else:
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
@@ -930,16 +1013,17 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
             print 'The ' + str(count + 1) + ' round of optimisation'
         except:
             continue
-        if tmp_res['fun'] is not None:
+        if tmp_res['fun'] is not None: # if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
             temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
             np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
             res.append(temp_res)
 
             print 'theta from the ' + str(count + 1) + ' round of optimisation is ' + str(tmp_res['x'])
-            _, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
+            logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
                 gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
             print 'grads at theta from the ' + str(count + 1) + ' round of optimisation is ' + str(grads_at_resOptim)
             flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
+            # if gradients from the first optimisation is zero, break out of the loop
             if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
                 print 'BFGS optmisation converged successfully at the '+ str(count + 1) + ' round of optimisation.'
                 res = np.array(res)
@@ -957,13 +1041,49 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
                 print 'Optim nit withPrior is ' + str(withPrior) + \
                  ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(tmp_res['nit']))
                 break
-            else:
-                if count == (repeat -1):
-                    file = 'logs/unsuccessAll' + str(repeat)+ 'Seed' + str(seed)
-                    f1 = open(file, 'wb')
-                    f1.close()
-                count += 1        
-        else:
+            else:#if gradients from the first optimisation is NOT zero, use HMC to jump out the current position and do optimisation again
+                try: # use HMC to find another intial value for which the optimisation works
+                    mu = tmp_res['x']
+                    print 'mu is' + str(mu)
+                    hess_inv = tmp_res['hess_inv']
+                    proposed_position, grad_proposed_pos, log_like_proposed_pos = \
+                    hmcSampler(mu, hess_inv, grads_at_resOptim, logPosat_resOptim, X_hatZs, y_hatZs, X_tildZs, y_tildZs)
+                    print 'proposed postion from HMC is ' + str(proposed_position)
+                    tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
+                                   x0=proposed_position, method=method,
+                                   jac=True,
+                                   args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                                   options={'maxiter': 100, 'disp': False})
+                except:
+                    continue
+                print 'optim from hmc finished.'
+                logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
+                gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+                flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
+                if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
+                    print 'BFGS optmisation converged successfully with hmc at the '+ str(count + 1) + ' round of optimisation.'
+                    res = np.array(res)
+                    res = res.T
+                    print 'minus_log_like for repeat ' + str(count + 1)+ ' with HMC is ' + str(res[1, :])
+                    print 'parameters after optimisation withPrior is ' + str(withPrior) + \
+                    ' & gpdtsMo is ' + str(gpdtsMo) + ' with HMC :'  + \
+                    str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]])
+                    print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
+                     ' & gpdtsMo is ' + str(gpdtsMo) + ' with HMC :'  + str(np.array(tmp_res['hess_inv']))
+                    print 'Optim status withPrior is ' + str(withPrior) + \
+                    ' & gpdtsMo is ' + str(gpdtsMo) + ' with HMC :'  + str(np.array(tmp_res['success']))
+                    print 'Optim message withPrior is ' + str(withPrior) + \
+                    ' & gpdtsMo is ' + str(gpdtsMo) + ' with HMC :'  + str(np.array(tmp_res['message']))
+                    print 'Optim nit withPrior is ' + str(withPrior) + \
+                     ' & gpdtsMo is ' + str(gpdtsMo) + ' with HMC :'  + str(np.array(tmp_res['nit']))
+                    break
+                else:# if using HMC the optimisation still NOT converge, do another round of optimisation
+                    if count == (repeat -1):
+                        file = 'logs/unsuccessAll' + str(repeat)+ 'Seed' + str(seed)
+                        f1 = open(file, 'wb')
+                        f1.close()
+                    count += 1        
+        else:# if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
             continue      
     
     return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'])]
