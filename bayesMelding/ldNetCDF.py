@@ -12,6 +12,7 @@ import argparse
 import fnmatch
 import os
 import countries
+import random
 
 # Found the logitudes transformed by Basemap are rotpole['longitude'] larger than those obtained from the netCDF files (also from R)
 def rCoords(coords, pole = 193):
@@ -22,6 +23,7 @@ def rCoords(coords, pole = 193):
 
 def gen_img_25_storms(SEED=260, num_hatZs=200, num_tildZs = 150, flagforLdAllStorms = False):
     np.random.seed(SEED)
+    random.seed(SEED)
     plt.figure()
     mp1= Basemap(projection='rotpole',lon_0=13,o_lon_p=193,o_lat_p=41,\
            llcrnrlat = 30, urcrnrlat = 65,\
@@ -71,7 +73,7 @@ def gen_img_25_storms(SEED=260, num_hatZs=200, num_tildZs = 150, flagforLdAllSto
         all_X_hatZs = np.array([obs_x, obs_y]).T
         
 
-        idx = np.random.randint(0, len(obs), num_hatZs)
+        idx = random.sample(np.arange(len(obs)), num_hatZs)
         X_hatZs = all_X_hatZs[idx, :] 
         y_hatZs = obs[idx]
 
@@ -97,7 +99,7 @@ def gen_img_25_storms(SEED=260, num_hatZs=200, num_tildZs = 150, flagforLdAllSto
         all_y_tildZs = np.array([np.mean(areal_z[i]) for i in range(len(areal_z))])
       
 
-        idx_sampleTildZs = np.random.randint(0, len(all_y_tildZs), num_tildZs)
+        idx_sampleTildZs = random.sample(np.arange(len(all_y_tildZs)), num_tildZs)
         y_tildZs = all_y_tildZs[idx_sampleTildZs]
         X_tildZs = areal_coordinate[idx_sampleTildZs]
 
@@ -149,8 +151,9 @@ def gen_img_25_storms(SEED=260, num_hatZs=200, num_tildZs = 150, flagforLdAllSto
 
     return [X_hatZs, y_hatZs, X_tildZs, y_tildZs]
 
-def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, crossValFlag=True, fold=10, cntry = 'FR', flagUseAvgMo = False):
+def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, crossValFlag=True, zeroMeanHatZs=True, fold=10, cntry = 'FR', flagUseAvgMo = False):
     np.random.seed(SEED)
+    random.seed(SEED)
     plt.figure()
     mp1= Basemap(projection='rotpole',lon_0=13,o_lon_p=193,o_lat_p=41,\
            llcrnrlat = 30, urcrnrlat = 65,\
@@ -174,10 +177,10 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, crossValFlag=True, fol
     obs_files = np.array(fnmatch.filter(os.listdir('../realData/theo_obs/'), '*obs*nc'))
     substr_analysis_files = np.array([analysis_files[i][:17] for i in range(len(analysis_files))])
     substr_obs_files = np.array([obs_files[i][:17] for i in range(len(obs_files))])
-    id_Imogen = np.where(substr_analysis_files == 'FPstart2016020612')[0][0]
+    id_Angus = np.where(substr_analysis_files == 'FPstart2016020612')[0][0]
 
     # for i in range(len(analysis_files)):
-    i = id_Imogen
+    i = id_Angus
     analysis_file = analysis_files[i]
     obs_file = obs_files[substr_obs_files == analysis_file[:17]]
 
@@ -201,11 +204,11 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, crossValFlag=True, fol
     obs_x = obs_x - 193
     obs = obs_nc['max_wind_gust'][:]
     all_X_hatZs = np.array([obs_x, obs_y]).T
-    
 
-    idx = np.random.randint(0, len(obs), num_hatZs)
-    X_hatZs = all_X_hatZs[idx, :] 
-    y_hatZs = obs[idx]
+    # The followiing three lines are randomly sampled observations from all European area
+    # idx = random.sample(np.arange(len(obs)), num_hatZs)
+    # X_hatZs = all_X_hatZs[idx, :] 
+    # y_hatZs = obs[idx]
 
     # convert the lat/lon values to x/y projections.
     x, y = mp(*np.meshgrid(lon,lat))
@@ -230,7 +233,7 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, crossValFlag=True, fol
         all_y_tildZs = np.array([np.mean(areal_z[i]) for i in range(len(areal_z))])
       
 
-        idx_sampleTildZs = np.random.randint(0, len(all_y_tildZs), num_tildZs)
+        idx_sampleTildZs = random.sample(np.arange(len(all_y_tildZs)), num_tildZs)
         y_tildZs = all_y_tildZs[idx_sampleTildZs]
         X_tildZs = areal_coordinate[idx_sampleTildZs]
 
@@ -267,7 +270,7 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, crossValFlag=True, fol
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
         output_folder += '/'
-        X_hatZs_out = open(output_folder + 'X_hatZs_seed' + str(SEED)  + '.pkl', 'wb s')
+        X_hatZs_out = open(output_folder + 'X_hatZs_seed' + str(SEED)  + '.pkl', 'wb')
         pickle.dump(X_hatZs, X_hatZs_out) 
         X_hatZs_out.close()
         y_hatZs_out = open(output_folder + 'y_hatZs_seed' + str(SEED) + '.pkl', 'wb')
@@ -289,11 +292,10 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, crossValFlag=True, fol
         #size of coordinates (around 800,000), find all coordinates that were within the square that includes France 
         dataMo_within_squareAround_FR = coords_within_squareAround_FR(data_Mo)
         dataObs_within_squareAround_FR = coords_within_squareAround_FR(data_Obs)
-        # print (dataMo_within_squareAround_FR.shape, dataObs_within_squareAround_FR.shape, dataObs_within_squareAround_FR[:10, 2])
-        # exit(-1)
-
+        print (dataMo_within_squareAround_FR.shape, dataObs_within_squareAround_FR.shape, dataObs_within_squareAround_FR[:10, 2])
         # plot the field using the fast pcolormesh routine 
         # set the colormap to jet.
+        numObs = dataObs_within_squareAround_FR.shape[0]
         norm = mpl.colors.Normalize(vmin=0, vmax=z_max)
 
         plt.figure()
@@ -309,28 +311,48 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, crossValFlag=True, fol
 
         cntrysegs, _ = mp1._readboundarydata('countries')
         cntrysegs = [map(rCoords, cntrysegs[i]) for i in range(len(cntrysegs))]
-        countries = LineCollection(cntrysegs,antialiaseds=(1,), colors = 'black')
+        countries = LineCollection(cntrysegs, antialiaseds=(1,), colors = 'black')
         ax.add_collection(countries)
         l, r, b, t = plt.axis() 
 
         plt.scatter(dataObs_within_squareAround_FR[:, 0], dataObs_within_squareAround_FR[:, 1], \
             c = dataObs_within_squareAround_FR[:, 2], cmap=plt.cm.jet, vmin=0, vmax=z_max, edgecolors='black')
         plt.xlim(l, r)
-        plt.ylim(b, t)
+        plt.ylim(b, t)  
         plt.savefig(analysis_file[:17] + '_' + str(cntry) +'.png')
         plt.show()
         plt.close()
-        idx = np.random.randint(0, dataObs_within_squareAround_FR.shape[0], num_hatZs)
+        # idx = np.random.randint(0, dataObs_within_squareAround_FR.shape[0], num_hatZs)# This randomly geneated integers are NOT unique
+        idx = random.sample(np.arange(dataObs_within_squareAround_FR.shape[0]), num_hatZs) # 07/08/2018 This randomly geneated integers are 
+        # print 'idx for seed ' + str(SEED) + ' is ' + str(idx)
+        print 'zeroMeanHatZs is ' + str(zeroMeanHatZs) + ' idx ' + str(idx[:10])
         X_hatZs = dataObs_within_squareAround_FR[idx, :2]
         y_hatZs = dataObs_within_squareAround_FR[idx, 2]
-        #remove the mean of the observations
-        y_hatZs = y_hatZs - np.mean(y_hatZs)
 
-        idx_sampleTildZs = np.random.randint(0, dataMo_within_squareAround_FR.shape[0], num_tildZs)
+        plt.figure()
+        plt.scatter(X_hatZs[:, 0], X_hatZs[:, 1])
+        plt.savefig('SEED' + str(SEED) + 'obs_'+ str(numObs) + '.png')
+        plt.show()
+        plt.close()
+
+        if zeroMeanHatZs:
+            y_hatZs = y_hatZs - np.mean(y_hatZs) #remove the mean of the observations
+
+        idx_sampleTildZs = random.sample(np.arange(dataMo_within_squareAround_FR.shape[0]), num_tildZs)
+        print 'zeroMeanHatZs is ' + str(zeroMeanHatZs) + ' idx_sampleTildZs ' + str(idx_sampleTildZs[:10])
         X_tildZs_tmp = dataMo_within_squareAround_FR[idx_sampleTildZs, :2]
 
         X_tildZs = np.array([X_tildZs_tmp[i].reshape(1, X_tildZs_tmp.shape[1]) for i in range(X_tildZs_tmp.shape[0])])
         y_tildZs = dataMo_within_squareAround_FR[idx_sampleTildZs, 2]
+
+        xtil1 = np.array([X_tildZs[i][:,0] for i in range(len(X_tildZs_tmp))])
+        xtil2 = np.array([X_tildZs[i][:,1] for i in range(len(X_tildZs_tmp))])
+
+        plt.figure()
+        plt.scatter(xtil1, xtil2)
+        plt.savefig('SEED' + str(SEED) + 'rndmodelOut_' + str(num_tildZs) + '.png')
+        plt.show()
+        plt.close()
 
         areal_hatZs = []
         for i in range(len(y_tildZs)):
@@ -370,11 +392,17 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, crossValFlag=True, fol
                 output_folder_cv += '/'
                 X_train_out = open(output_folder_cv + 'X_train.pkl', 'wb')
                 pickle.dump(X_train, X_train_out)
-                y_train_out = open(output_folder_cv + 'y_train.pkl', 'wb')
+                if zeroMeanHatZs:
+                    y_train_out = open(output_folder_cv + 'y_train.pkl', 'wb')
+                else:
+                    y_train_out = open(output_folder_cv + 'y_train_withMean.pkl', 'wb')
                 pickle.dump(y_train, y_train_out)
                 X_test_out = open(output_folder_cv  + 'X_test.pkl', 'wb')
                 pickle.dump(X_test, X_test_out)
-                y_test_out = open(output_folder_cv + 'y_test.pkl', 'wb')
+                if zeroMeanHatZs:
+                    y_test_out = open(output_folder_cv + 'y_test.pkl', 'wb')
+                else:
+                    y_test_out = open(output_folder_cv + 'y_test_withMean.pkl', 'wb')
                 pickle.dump(y_test, y_test_out)
                 X_tildZs_out = open(output_folder_cv + 'X_tildZs.pkl', 'wb')
                 pickle.dump(X_tildZs, X_tildZs_out) 
@@ -387,7 +415,10 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, crossValFlag=True, fol
             X_hatZs_out = open(output_folder + 'X_hatZs.pkl', 'wb')
             pickle.dump(X_hatZs, X_hatZs_out) 
             X_hatZs_out.close()
-            y_hatZs_out = open(output_folder + 'y_hatZs.pkl', 'wb')
+            if zeroMeanHatZs:
+                y_hatZs_out = open(output_folder + 'y_hatZs.pkl', 'wb')
+            else:
+                y_hatZs_out = open(output_folder + 'y_hatZs_withMean.pkl', 'wb')
             pickle.dump(y_hatZs, y_hatZs_out) 
             y_hatZs_out.close()
             X_tildZs_out = open(output_folder + 'X_tildZs.pkl', 'wb')
@@ -398,7 +429,7 @@ def loadNetCdf(SEED=260, num_hatZs=200, num_tildZs = 150, crossValFlag=True, fol
             y_tildZs_out.close()
             areal_hatZs_out = open(output_folder + 'areal_hatZs.pkl', 'wb')
             pickle.dump(areal_hatZs, areal_hatZs_out) 
-            y_tildZs_out.close()
+            areal_hatZs_out.close()
             return [X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_hatZs]
 
 # The following code translated from R is NOT working for Python Basemap.
@@ -448,13 +479,15 @@ def get_country(coords):
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
-    p.add_argument('-SEED', type=int, dest='SEED', default=99, help='The simulation index')
+    p.add_argument('-SEED', type=int, dest='SEED', default=120, help='The simulation index')
     p.add_argument('-numObs', type=int, dest='numObs', default=328, help='Number of observations used in modelling')
     p.add_argument('-numMo', type=int, dest='numMo', default=300, help='Number of model outputs used in modelling')
-    p.add_argument('-crossValFlag', dest='crossValFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
+    p.add_argument('-crossValFlag', dest='crossValFlag', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='whether to validate the model using cross validation')
+    p.add_argument('-zeroMeanHatZs', dest='zeroMeanHatZs', default=True,  type=lambda x: (str(x).lower() == 'true'), \
+        help='whether to zero mean for y_hatZs')
     args = p.parse_args()
-    loadNetCdf(args.SEED, args.numObs, args.numMo, args.crossValFlag)
+    loadNetCdf(args.SEED, args.numObs, args.numMo, args.crossValFlag, args.zeroMeanHatZs)
 
 
 
