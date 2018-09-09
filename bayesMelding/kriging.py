@@ -402,7 +402,7 @@ def optimise(X_hatZs, y_hatZs, withPrior, useGradsFlag = False, repeat=3, seed =
     else:
         return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'])]
 
-def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = True, SEED=None, zeroMeanHatZs = False, numMo = None, \
+def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = True, SEED=None, zeroMeanHatZs = False,  \
  withPrior= False, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
@@ -430,7 +430,10 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     y = y_train
     l_chol_C = compute_L_chol(C_hatZs)
     u = linalg.solve_triangular(l_chol_C.T, linalg.solve_triangular(l_chol_C, y - mu_train, lower=True))
-    #*******************************comupute the prediction part for ntest test data points under each theta **********************************************************
+
+    output_folder = 'Kriging/seed' + str(SEED) + '/'
+
+    #*******************************comupute the prediction part for out sample ntest test data points under each theta **********************************************************
     ntest = X_test.shape[0]
     K_star_star = np.zeros((ntest,1))
     K_star_hatZs = cov_mat_xy(X_train, X_test, np.exp(log_sigma_Zs), np.exp(log_phi_Zs)) # is a matrix of size (n_train, n_test)
@@ -452,11 +455,12 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
 
     rmse = np.sqrt(np.mean((y_test - mu_star)**2))
 
-    print 'RMSE for seed' + str(SEED) + ' NoMO_is :' + str(rmse)
- 
-    output_folder = 'sampRealData/FPstart2016020612_FR_numObs_' + str(328) + '_numMo_' + str(numMo) \
-    + '/seed' + str(SEED) + '/'
+    print 'Out-of-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse)
 
+    rmse_out = open(output_folder + 'rmse_krig_outSample.pkl', 'wb')
+    pickle.dump(rmse, rmse_out) 
+    rmse_out.close()
+ 
     if not crossValFlag:
         index = np.arange(len(y_test))
         standardised_y_estimate = (mu_star - mu_test)/np.exp(log_obs_noi_scale)
@@ -468,12 +472,12 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
         plt.axhline(-2, color='black', lw=1.2, ls =':')
         plt.xlabel('Index')
         plt.ylabel('Standardised residual')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) +'std_prediction_errorsNoMo.png')
+        plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_krig_outSample.png')
         plt.show()
         plt.close()
 
         sm.qqplot(standardised_y_estimate, line='45')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Normal_Q-QNoMo.png')
+        plt.savefig(output_folder + 'SEED' + str(SEED) + 'normalQQ_krig_outSample.png')
         plt.show()
         plt.close()
     
@@ -484,25 +488,33 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     vstar = K_star_star - np.sum(LKstar**2, axis=0).reshape(ntest,1) 
     vstar[vstar < 0] = 1e-9
     vstar = vstar.reshape(ntest, )
-    print 'estimated variance is ' + str(vstar)
+    print 'Out of sample estimated variance is ' + str(vstar)
 
     avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
 
-    print 'Average width of the prediction accuracy for seed ' + str(SEED) + ' NoMo_is ' + str(avg_width_of_predic_var) 
+    print 'Out of sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var) 
+
+    avgVar_out = open(output_folder + 'avgVar_krig_outSample.pkl', 'wb')
+    pickle.dump(avg_width_of_predic_var, avgVar_out) 
+    avgVar_out.close()
 
     upper_interv_predic = mu_star + 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
     lower_interv_predic = mu_star - 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
 
     upper_interval_rounded = np.round(upper_interv_predic, 1)
     lower_interval_rounded = np.round(lower_interv_predic, 1)
-    print 'rounded upper_interval is ' + str(upper_interval_rounded)
-    print 'rounded lower_interval is ' + str(lower_interval_rounded)
+    # print 'rounded upper_interval is ' + str(upper_interval_rounded)
+    # print 'rounded lower_interval is ' + str(lower_interval_rounded)
 
     flag_in_confiInterv_r = (y_test >= lower_interval_rounded) & (y_test <= upper_interval_rounded)
     count_in_confiInterv_r  = np.sum(np.array(map(int, flag_in_confiInterv_r)))
-    print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
+    # print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
     succRate = count_in_confiInterv_r/np.float(len(y_test))
-    print 'prediction accuracy is ' + '{:.1%}'.format(succRate)
+    print 'Out of sample prediction accuracy is ' + '{:.1%}'.format(succRate)
+
+    accuracy_out = open(output_folder + 'predicAccuracy_krig_outSample.pkl', 'wb')
+    pickle.dump(succRate, accuracy_out) 
+    accuracy_out.close()
 
     lower_bound = np.array([-10, -6])
     upper_bound = np.array([-4, 2])
@@ -529,30 +541,112 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
 
     mu_plot = mu_test + np.dot(K_star, u)
 
-    # fig = plt.figure()
-    # ax = Axes3D(fig)
-    # scat = ax.scatter(x1_vec, x2_vec, mu_plot, c=mu_plot, cmap='viridis', linewidth=0.5)
-    # ax.set_xlabel('$lon$')
-    # ax.set_ylabel('$lat$')
-    # ax.set_zlabel('$Z(s)$')
-    # fig.colorbar(scat, shrink=0.85)
-    # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Krig_predic_scat.png')
-    # plt.close()
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    scat = ax.scatter(x1_vec, x2_vec, mu_plot, c=mu_plot, cmap='viridis', linewidth=0.5)
+    ax.set_xlabel('$lon$')
+    ax.set_ylabel('$lat$')
+    ax.set_zlabel('$Z(s)$')
+    fig.colorbar(scat, shrink=0.85)
+    plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Krig_predic_scat.png')
+    plt.close()
 
-    # fig = plt.figure()
-    # ax = Axes3D(fig)
-    # surf = ax.plot_surface(x1, x2, mu_plot.reshape(point_res, point_res), rstride=1, cstride=1, cmap='viridis')
-    # ax.set_xlabel('$lon$')
-    # ax.set_ylabel('$lat$')
-    # ax.set_zlabel('$Z(s)$')
-    # fig.colorbar(surf, shrink=0.85)
-    # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Krig_predic_surf.png')
-    # plt.close()
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    surf = ax.plot_surface(x1, x2, mu_plot.reshape(point_res, point_res), rstride=1, cstride=1, cmap='viridis')
+    ax.set_xlabel('$lon$')
+    ax.set_ylabel('$lat$')
+    ax.set_zlabel('$Z(s)$')
+    fig.colorbar(surf, shrink=0.85)
+    plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Krig_predic_surf.png')
+    plt.close()
+    #*******************************comupute the prediction part for in sample ntrain test data points under each theta **********************************************************
+    X_test = X_train
+    y_test = y_train
+    ntest = X_test.shape[0]
+    K_star_star = np.zeros((ntest,1))
+    K_star_hatZs = cov_mat_xy(X_train, X_test, np.exp(log_sigma_Zs), np.exp(log_phi_Zs)) # is a matrix of size (n_train, n_test)
+    K_star_hatZs = K_star_hatZs.T
+    K_star = K_star_hatZs
+    
+    if zeroMeanHatZs:
+        mu_test = np.zeros(len(y_test))
+    else:
+        n_row = X_test.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_test_extend = np.hstack((X_test, tmp0))
+        mu_test = np.dot(X_test_extend, mu_hatZs_coeffis)
+
+
+    mu_star = mu_test + np.dot(K_star, u)
+
+    rmse = np.sqrt(np.mean((y_test - mu_star)**2))
+
+    print 'In-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse)
+
+    rmse_out = open(output_folder + 'rmse_krig_inSample.pkl', 'wb')
+    pickle.dump(rmse, rmse_out) 
+    rmse_out.close()
+ 
+    if not crossValFlag:
+        index = np.arange(len(y_test))
+        standardised_y_estimate = (mu_star - mu_test)/np.exp(log_obs_noi_scale)
+        plt.figure()
+        plt.scatter(index, standardised_y_estimate, facecolors='none',  edgecolors='k', linewidths=1.2)
+        # plt.scatter(index, standardised_y_etstimate, c='k')
+        plt.axhline(0, color='black', lw=1.2, ls ='-')
+        plt.axhline(2, color='black', lw=1.2, ls =':')
+        plt.axhline(-2, color='black', lw=1.2, ls =':')
+        plt.xlabel('Index')
+        plt.ylabel('Standardised residual')
+        plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_krig_inSample.png')
+        plt.show()
+        plt.close()
+
+        sm.qqplot(standardised_y_estimate, line='45')
+        plt.savefig(output_folder + 'SEED' + str(SEED) + 'normalQQ_krig_inSample.png')
+        plt.show()
+        plt.close()
+    
+    LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
+    for i in range(ntest):
+        K_star_star[i] = cov_matrix(X_test[i].reshape(1, 2), np.exp(log_sigma_Zs), np.exp(log_phi_Zs))
+    
+    vstar = K_star_star - np.sum(LKstar**2, axis=0).reshape(ntest,1) 
+    vstar[vstar < 0] = 1e-9
+    vstar = vstar.reshape(ntest, )
+    print 'In sample estimated variance is ' + str(vstar)
+
+    avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
+
+    print 'In sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var) 
+
+    avgVar_out = open(output_folder + 'avgVar_krig_inSample.pkl', 'wb')
+    pickle.dump(avg_width_of_predic_var, avgVar_out) 
+    avgVar_out.close()
+
+    upper_interv_predic = mu_star + 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+    lower_interv_predic = mu_star - 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+
+    upper_interval_rounded = np.round(upper_interv_predic, 1)
+    lower_interval_rounded = np.round(lower_interv_predic, 1)
+    # print 'rounded upper_interval is ' + str(upper_interval_rounded)
+    # print 'rounded lower_interval is ' + str(lower_interval_rounded)
+
+    flag_in_confiInterv_r = (y_test >= lower_interval_rounded) & (y_test <= upper_interval_rounded)
+    count_in_confiInterv_r  = np.sum(np.array(map(int, flag_in_confiInterv_r)))
+    # print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
+    succRate = count_in_confiInterv_r/np.float(len(y_test))
+    print 'In sample prediction accuracy is ' + '{:.1%}'.format(succRate)
+
+    accuracy_out = open(output_folder + 'predicAccuracy_krig_inSample.pkl', 'wb')
+    pickle.dump(succRate, accuracy_out) 
+    accuracy_out.close()
 
     return succRate
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
-    p.add_argument('-SEED', type=int, dest='SEED', default=99, help='The simulation index')
+    p.add_argument('-SEED', type=int, dest='SEED', default=120, help='The simulation index')
     p.add_argument('-repeat', type=int, dest='repeat', default=1, help='number of repeats in optimisation')
     p.add_argument('-o', type=str, dest='output', default=None, help='Output folder')
     p.add_argument('-withPrior', dest='withPrior', default=False,  type=lambda x: (str(x).lower() == 'true'), help='flag for ML or MAP')
@@ -563,8 +657,8 @@ if __name__ == '__main__':
     p.add_argument('-cntry', type=str, dest='cntry', default='FR', help='Country of the geo data used')
     p.add_argument('-usecntryFlag', dest='usecntryFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use data for a specific country')
-    p.add_argument('-numObs', type=int, dest='numObs', default=213, help='Number of observations used in modelling')
-    p.add_argument('-numMo', type=int, dest='numMo', default=300, help='Number of model outputs used in modelling')
+    p.add_argument('-numObs', type=int, dest='numObs', default=328, help='Number of observations used in modelling')
+    p.add_argument('-numMo', type=int, dest='numMo', default=250, help='Number of model outputs used in modelling')
     p.add_argument('-crossValFlag', dest='crossValFlag', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='whether to validate the model using cross validation')
     p.add_argument('-idxFold', type=int, dest='idxFold', default=9, help='the index for the fold for cross validation')
@@ -573,8 +667,7 @@ if __name__ == '__main__':
     args = p.parse_args()
     if args.output is None: args.output = os.getcwd()
     if args.usecntryFlag:
-        output_folder = args.output + '/cntry_' + str(args.cntry) + '_numObs_' + str(args.numObs) + \
-        '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_repeat' + str(args.repeat) 
+        output_folder = args.output + '/Kriging/seed' + str(args.SEED) 
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     output_folder += '/'
@@ -582,7 +675,7 @@ if __name__ == '__main__':
 
     start = default_timer()
     np.random.seed(args.SEED)
-    input_folder = 'sampRealData/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
+    input_folder = 'Data/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
     + '/seed' + str(args.SEED) + '/'
     
     if args.usecntryFlag:
@@ -663,7 +756,7 @@ if __name__ == '__main__':
 
     res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
 'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded}
-    res_out = open(output_folder  + 'resOptimNoMo.pkl', 'wb')
+    res_out = open(output_folder  + 'resOptim_krig.pkl', 'wb')
     pickle.dump(res, res_out)
     res_out.close()
     if args.crossValFlag:
@@ -674,8 +767,8 @@ if __name__ == '__main__':
         X_test = X_hatZs[-50:, :]
         y_train = y_hatZs[:-50]
         y_test = y_hatZs[-50:]
-        predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, args.crossValFlag, args.SEED, args.zeroMeanHatZs, args.numMo)
-        print 'predic_accuracy for seed ' + str(args.SEED)  + ' is ' + '{:.1%}'.format(predic_accuracy)
+        predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, args.crossValFlag, args.SEED, args.zeroMeanHatZs)
+        # print 'predic_accuracy for seed ' + str(args.SEED)  + ' is ' + '{:.1%}'.format(predic_accuracy)
 
 
 

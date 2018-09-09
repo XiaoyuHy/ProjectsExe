@@ -979,7 +979,7 @@ def hmcSampler(mu, hess_inv, grad_current_pos, log_like_current_pos, X_hatZs, y_
     return [proposed_position, grad_proposed_pos, log_like_proposed_pos]
    
 
-def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, useGradsFlag = False, repeat=3, seed =188, method='L-BFGS-B', rbf=True, OMEGA = 1e-6, \
+def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, useGradsFlag = False, repeat=3, seed =188, numMo =50, method='L-BFGS-B', rbf=True, OMEGA = 1e-6, \
     bounds = ((-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-50, 50), (-50, 50), (-50, 50), (-50, 50))): 
     print 'starting optimising when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
          '& useGradsFlag is ' + str(useGradsFlag) 
@@ -990,102 +990,236 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
     res = []
     count = 0
     LBFGSB_status = False
-   
-    while count != repeat:
-        try:#find one intial value for which the optimisation works
-            if gpdtsMo:
-                initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 3.5, 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 3.5, 1)), \
-                np.log(np.random.gamma(1., np.sqrt(num_par), num_par)),  np.zeros(4)), axis=0)
-            else:
-                initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4)), axis=0)
-            print 'initial theta when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) +  \
-            '& useGradsFlag is ' + str(useGradsFlag) +  ' :' + str(initial_theta)
-            if useGradsFlag:
-                tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
-                               x0=initial_theta, method=method,
-                               jac=True, bounds = bounds,
-                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
-                               options={'maxiter': 2000, 'disp': False})
-            else:
-                tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
-                               x0=initial_theta, method=method,
-                               jac=False, bounds = bounds,
-                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
-                               options={'maxiter': 2000, 'disp': False})
-            print 'The ' + str(count) + ' round of optimisation'
-        except:
-            continue
-        if tmp_res['fun'] is not None: # if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
-            temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv'].todense()), np.copy(tmp_res['success']), \
-            np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
-            res.append(temp_res)
-            print 'theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(tmp_res['x'])
-            logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
-                gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
-            print 'grads at theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(grads_at_resOptim)
-            flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
-            # if gradients from the first optimisation is zero, break out of the loop
-            if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
-                LBFGSB_status = True
-                print 'LBFGSB optmisation converged successfully at the '+ str(count) + ' round of optimisation.'
-                res = np.array(res)
-                res = res.T
-                print 'minus_log_like for repeat ' + str(count)+ ' with LBFGSB is ' + str(res[1, :])
-                print 'parameters after optimisation withPrior is ' + str(withPrior) + \
-                ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + \
-                str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]])
-                print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
-                 ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['hess_inv'].todense()))
-                print 'Optim status withPrior is ' + str(withPrior) + \
-                ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['success']))
-                print 'Optim message withPrior is ' + str(withPrior) + \
-                ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['message']))
-                print 'Optim nit withPrior is ' + str(withPrior) + \
-                 ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['nit']))
-                break
-            else:#if gradients from the LBFGSB optimisation is NOT zero, do another BFGSB optimisation
-                if count == (repeat -1):#if gradients from the all LBFGSB optimisation is NOT zero, do ONE ROUND OF  NON constraint optimisation AT THE LAST STEP
-                    file = 'logs/unsuccessAll' + str(repeat)+ 'Seed' + str(seed)+ str(method)
-                    f1 = open(file, 'wb')
-                    f1.close()
-
-                    print 'initial theta from LBFGSB optimisation for BFGS is ' + str(tmp_res['x'])
+    if numMo == 50:
+        while count != repeat:
+            try:#find one intial value for which the optimisation works
+                if gpdtsMo:
+                    initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 3.5, 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                    np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 3.5, 1)), \
+                    np.log(np.random.gamma(1., np.sqrt(num_par), num_par)),  np.zeros(4)), axis=0)     
+                else:
+                    initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                    np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4)), axis=0)
+                print 'initial theta when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) +  \
+                '& useGradsFlag is ' + str(useGradsFlag) +  ' :' + str(initial_theta)
+                if useGradsFlag:
                     tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
-                                   x0=tmp_res['x'], method='BFGS',
-                                   jac=True,
+                                   x0=initial_theta, method=method,
+                                   jac=True, bounds = bounds,
                                    args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
                                    options={'maxiter': 2000, 'disp': False})
-                    print 'theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(tmp_res['x'])
+                else:
+                    tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
+                                   x0=initial_theta, method=method,
+                                   jac=False, bounds = bounds,
+                                   args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                                   options={'maxiter': 2000, 'disp': False})
+                print 'The ' + str(count) + ' round of optimisation'
+            except:
+                continue
+            if tmp_res['fun'] is not None: # if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
+                temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv'].todense()), np.copy(tmp_res['success']), \
+                np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
+                res.append(temp_res)
+                print 'theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(tmp_res['x'])
+                logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
+                    gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+                print 'grads at theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(grads_at_resOptim)
+                flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
+                # if gradients from the first optimisation is zero, break out of the loop
+                if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
+                    LBFGSB_status = True
+                    print 'LBFGSB optmisation converged successfully at the '+ str(count) + ' round of optimisation.'
+                    res = np.array(res)
+                    res = res.T
+                    print 'minus_log_like for repeat ' + str(count)+ ' with LBFGSB is ' + str(res[1, :])
+                    print 'parameters after optimisation withPrior is ' + str(withPrior) + \
+                    ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + \
+                    str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]])
+                    print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
+                     ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['hess_inv'].todense()))
+                    print 'Optim status withPrior is ' + str(withPrior) + \
+                    ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['success']))
+                    print 'Optim message withPrior is ' + str(withPrior) + \
+                    ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['message']))
+                    print 'Optim nit withPrior is ' + str(withPrior) + \
+                     ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['nit']))
+                    break
+                else:#if gradients from the LBFGSB optimisation is NOT zero, do another BFGSB optimisation
+                    if count == (repeat -1):#if gradients from the all LBFGSB optimisation is NOT zero, do ONE ROUND OF  NON constraint optimisation AT THE LAST STEP
+                        file = 'logs/unsuccessAll' + str(repeat)+ 'Seed' + str(seed)+ str(method)
+                        f1 = open(file, 'wb')
+                        f1.close()
+
+                        print 'initial theta from LBFGSB optimisation for BFGS is ' + str(tmp_res['x'])
+                        tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
+                                       x0=tmp_res['x'], method='BFGS',
+                                       jac=True,
+                                       args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                                       options={'maxiter': 2000, 'disp': False})
+                        print 'theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(tmp_res['x'])
+                        logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
+                            gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+                        print 'grads at theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(grads_at_resOptim)
+                        flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
+                        # if gradients from the BFGS optimisation is zero, break out of the loop
+                        if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
+                            print 'BFGS optmisation converged successfully at the '+ str(count) + ' round of optimisation.'
+                            print 'minus_log_like for repeat ' + str(count)+ ' with BFGS is ' + str(tmp_res['fun'])
+                            print 'parameters after optimisation withPrior is ' + str(withPrior) + \
+                            ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + \
+                            str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]])
+                            print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
+                     ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['hess_inv']))
+                            print 'Optim status withPrior is ' + str(withPrior) + \
+                            ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['success']))
+                            print 'Optim message withPrior is ' + str(withPrior) + \
+                            ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['message']))
+                            print 'Optim nit withPrior is ' + str(withPrior) + \
+                             ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['nit']))
+                            break
+                    else:    
+                        count += 1        
+            else:# if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
+                continue 
+        if LBFGSB_status:
+            return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'].todense())]
+        else:
+            return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'])]
+    else:
+        input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_328_numMo_' + str(numMo - 50) + '/seed' + str(seed) + '/'
+        resOptim_in = open(input_folder + 'resOptim.pkl', 'rb')
+        resOptim = pickle.load(resOptim_in)
+        initial_theta = resOptim['mu']
+        print 'initial theta from previous optimisation  for BFGS is ' + str(initial_theta)
+        tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
+                       x0=initial_theta, method='BFGS',
+                       jac=True,
+                       args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                       options={'maxiter': 2000, 'disp': False})
+        print 'theta from optimisation with BFGS when numMo is ' + str(numMo) + ' is ' + str(tmp_res['x'])
+        logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
+            gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+        print 'grads at theta from optimisation with BFGS when numMo is ' + str(numMo) + ' is ' + str(grads_at_resOptim)
+        flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
+        # if gradients from the BFGS optimisation is zero, break out of the loop
+        if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
+            print 'BFGS optmisation converged successfully when numMo is ' + str(numMo)
+            print 'minus_log_like with BFGS is when numMo is ' + str(numMo) + ' is ' + str(tmp_res['fun'])
+            print 'parameters after optimisation withPrior is ' + str(withPrior) + \
+            ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + \
+            str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]])
+            print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
+     ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['hess_inv']))
+            print 'Optim status withPrior is ' + str(withPrior) + \
+            ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['success']))
+            print 'Optim message withPrior is ' + str(withPrior) + \
+            ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['message']))
+            print 'Optim nit withPrior is ' + str(withPrior) + \
+             ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['nit']))
+            return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'])]
+        else:
+            file = 'logs/failBFGSOptimSeed' + str(seed) + 'numMo' + str(numMo) 
+            f1 = open(file, 'wb')
+            f1.close()
+            while count != repeat:
+                try:#find one intial value for which the optimisation works
+                    if gpdtsMo:
+                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 3.5, 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 3.5, 1)), \
+                        np.log(np.random.gamma(1., np.sqrt(num_par), num_par)),  np.zeros(4)), axis=0)     
+                    else:
+                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4)), axis=0)
+                    print 'initial theta when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) +  \
+                    '& useGradsFlag is ' + str(useGradsFlag) +  ' :' + str(initial_theta)
+                    if useGradsFlag:
+                        tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
+                                       x0=initial_theta, method=method,
+                                       jac=True, bounds = bounds,
+                                       args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                                       options={'maxiter': 2000, 'disp': False})
+                    else:
+                        tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
+                                       x0=initial_theta, method=method,
+                                       jac=False, bounds = bounds,
+                                       args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                                       options={'maxiter': 2000, 'disp': False})
+                    print 'The ' + str(count) + ' round of optimisation'
+                except:
+                    continue
+                if tmp_res['fun'] is not None: # if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
+                    temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv'].todense()), np.copy(tmp_res['success']), \
+                    np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
+                    res.append(temp_res)
+                    print 'theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(tmp_res['x'])
                     logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
                         gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
-                    print 'grads at theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(grads_at_resOptim)
+                    print 'grads at theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(grads_at_resOptim)
                     flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
-                    # if gradients from the BFGS optimisation is zero, break out of the loop
+                    # if gradients from the first optimisation is zero, break out of the loop
                     if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
-                        print 'BFGS optmisation converged successfully at the '+ str(count) + ' round of optimisation.'
-                        print 'minus_log_like for repeat ' + str(count)+ ' with BFGS is ' + str(tmp_res['fun'])
+                        LBFGSB_status = True
+                        print 'LBFGSB optmisation converged successfully at the '+ str(count) + ' round of optimisation.'
+                        res = np.array(res)
+                        res = res.T
+                        print 'minus_log_like for repeat ' + str(count)+ ' with LBFGSB is ' + str(res[1, :])
                         print 'parameters after optimisation withPrior is ' + str(withPrior) + \
-                        ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + \
+                        ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + \
                         str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]])
                         print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
-                 ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['hess_inv']))
+                         ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['hess_inv'].todense()))
                         print 'Optim status withPrior is ' + str(withPrior) + \
-                        ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['success']))
+                        ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['success']))
                         print 'Optim message withPrior is ' + str(withPrior) + \
-                        ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['message']))
+                        ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['message']))
                         print 'Optim nit withPrior is ' + str(withPrior) + \
-                         ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['nit']))
+                         ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['nit']))
                         break
-                else:    
-                    count += 1        
-        else:# if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
-            continue 
-    if LBFGSB_status:
-        return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'].todense())]
-    else:
-        return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'])]
+                    else:#if gradients from the LBFGSB optimisation is NOT zero, do another BFGSB optimisation
+                        if count == (repeat -1):#if gradients from the all LBFGSB optimisation is NOT zero, do ONE ROUND OF  NON constraint optimisation AT THE LAST STEP
+                            file = 'logs/unsuccessAll' + str(repeat)+ 'repSeed' + str(seed)+ str(method)  + '_numMo' + str(numMo) 
+                            f1 = open(file, 'wb')
+                            f1.close()
+
+                            print 'initial theta from LBFGSB optimisation for BFGS is ' + str(tmp_res['x'])
+                            tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
+                                           x0=tmp_res['x'], method='BFGS',
+                                           jac=True,
+                                           args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                                           options={'maxiter': 2000, 'disp': False})
+                            print 'theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(tmp_res['x'])
+                            logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
+                                gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+                            print 'grads at theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(grads_at_resOptim)
+                            flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
+                            # if gradients from the BFGS optimisation is zero, break out of the loop
+                            if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
+                                print 'BFGS optmisation converged successfully at the '+ str(count) + ' round of optimisation.'
+                                print 'minus_log_like for repeat ' + str(count)+ ' with BFGS is ' + str(tmp_res['fun'])
+                                print 'parameters after optimisation withPrior is ' + str(withPrior) + \
+                                ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + \
+                                str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]])
+                                print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
+                         ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['hess_inv']))
+                                print 'Optim status withPrior is ' + str(withPrior) + \
+                                ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['success']))
+                                print 'Optim message withPrior is ' + str(withPrior) + \
+                                ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['message']))
+                                print 'Optim nit withPrior is ' + str(withPrior) + \
+                                 ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['nit']))
+                                break
+                            else:
+                                count +=1
+                        else:  
+                            count += 1        
+                else:# if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
+                    continue 
+            if LBFGSB_status:
+                return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'].todense())]
+            else:
+                return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'])]
+
 
 class MH_estimator():
     def __init__(self, X_hatZs, y_hatZs, X_tildZs, y_tildZs):
@@ -1689,7 +1823,7 @@ def read_Sim_Data():
     return[X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs]
 
 def check_grads():
-    input_folder = 'sampRealData/FPstart2016020612_FR_numObs_' + str(328) + '_numMo_' + str(250) \
+    input_folder = 'Data/FPstart2016020612_FR_numObs_' + str(328) + '_numMo_' + str(50) \
     + '/seed' + str(120) + '/'
     X_hatZs_in = open(input_folder + 'X_hatZs.pkl', 'rb')
     X_hatZs = pickle.load(X_hatZs_in) 
@@ -1724,8 +1858,10 @@ def check_grads():
     
 if __name__ == '__main__':
     computeN3Cost.init(0)
+    # check_grads()
+    # exit(-1)
     p = argparse.ArgumentParser()
-    p.add_argument('-SEED', type=int, dest='SEED', default=99, help='The simulation index')
+    p.add_argument('-SEED', type=int, dest='SEED', default=120, help='The simulation index')
     p.add_argument('-repeat', type=int, dest='repeat', default=1, help='number of repeats in optimisation')
     p.add_argument('-o', type=str, dest='output', default=None, help='Output folder')
     p.add_argument('-withPrior', dest='withPrior', default=False,  type=lambda x: (str(x).lower() == 'true'), help='flag for ML or MAP')
@@ -1749,11 +1885,11 @@ if __name__ == '__main__':
     p.add_argument('-oneRepPerJob', dest='oneRepPerJob', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to run one repeat for each job on cluster')
     p.add_argument('-folder', type=int, dest='folder', default=0, help='The folder index')
-    p.add_argument('-cntry', type=str, dest='cntry', default=None, help='Country of the geo data used')
+    p.add_argument('-cntry', type=str, dest='cntry', default='FR', help='Country of the geo data used')
     p.add_argument('-usecntryFlag', dest='usecntryFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use data for a specific country')
-    p.add_argument('-numObs', type=int, dest='numObs', default=200, help='Number of observations used in modelling')
-    p.add_argument('-numMo', type=int, dest='numMo', default=150, help='Number of model outputs used in modelling')
+    p.add_argument('-numObs', type=int, dest='numObs', default=328, help='Number of observations used in modelling')
+    p.add_argument('-numMo', type=int, dest='numMo', default=50, help='Number of model outputs used in modelling')
     p.add_argument('-crossValFlag', dest='crossValFlag', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='whether to validate the model using cross validation')
     p.add_argument('-idxFold', type=int, dest='idxFold', default=9, help='the index for the fold for cross validation')
@@ -1771,8 +1907,7 @@ if __name__ == '__main__':
                 '/folder_' + str(args.folder) + '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_poly_deg_' + str(args.poly_deg) + \
                 '_repeat' + str(args.repeat) 
             else:
-                output_folder = args.output + '/cntry_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + \
-                '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_poly_deg_' + str(args.poly_deg) + '_repeat' + str(args.repeat) 
+                output_folder = args.output + '/Data/FPstart2016020612_FR_numObs_328_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) 
         else:
             if args.oneRepPerJob:
                 output_folder = args.output + '/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/folder_' + str(args.folder) + \
@@ -1795,7 +1930,7 @@ if __name__ == '__main__':
 
     # X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = simData.sim_hatTildZs_With_Plots(SEED = args.SEED, phi_Z_s = [args.lsZs], gp_deltas_modelOut = args.gpdtsMo, \
     #     phi_deltas_of_modelOut = [args.lsdtsMo], sigma_Zs = args.sigZs, sigma_deltas_of_modelOut = args.sigdtsMo)
-    input_folder = 'sampRealData/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
+    input_folder = 'Data/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
     + '/seed' + str(args.SEED) + '/'
     if args.useCluster:
         if args.usecntryFlag:
@@ -1852,7 +1987,7 @@ if __name__ == '__main__':
             res = Gibbs_sampler(X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_hatZs)
             mu, cov = res.sampler(args.withPrior, args.onlyOptimCovPar, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
         else:
-            mu, cov = optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
+            mu, cov = optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED, args.numMo)
 
     end = default_timer()
     print 'running time for optimisation with fixMb is ' + str(args.fixMb) + str(end - start) + ' seconds'
@@ -1926,7 +2061,7 @@ if __name__ == '__main__':
             y_train = y_hatZs[:-50]
             y_test = y_hatZs[-50:]
             predic_accuracy = gpGaussLikeFuns.predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo)
-            print 'predic_accuracy for seed ' + str(args.SEED)  + ' is ' + '{:.1%}'.format(predic_accuracy)
+            # print 'predic_accuracy for seed ' + str(args.SEED)  + ' is ' + '{:.1%}'.format(predic_accuracy)
         
     # start = default_timer()
     # tmp = MH_estimator(X_hatZs, y_hatZs, X_tildZs, y_tildZs)

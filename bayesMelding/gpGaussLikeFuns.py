@@ -296,7 +296,7 @@ def log_py_giv_par(theta, X, y, OMEGA = 1e-6):
 
     return log_like
 
-def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, crossValFlag = True, SEED=None, numMo = None, \
+def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, crossValFlag = False, SEED=None, numMo = None, \
     gp_deltas_modelOut = True, withPrior= False, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
@@ -359,7 +359,9 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 
     l_chol_C = compute_L_chol(mat)
     u = linalg.solve_triangular(l_chol_C.T, linalg.solve_triangular(l_chol_C, y - mu_hatTildZs, lower=True))
-    #*******************************comupute the prediction part for ntest test data points under each theta **********************************************************
+
+    output_folder = 'Data/FPstart2016020612_FR_numObs_328_numMo_' + str(numMo) + '/seed' + str(SEED) + '/'
+    #*******************************comupute the prediction part for out-of-sample ntest test data points under each theta **********************************************************
     ntest = X_test.shape[0]
     K_star_star = np.zeros((ntest,1))
     K_star_hatZs = cov_mat_xy(X_train, X_test, np.exp(log_sigma_Zs), np.exp(log_phi_Zs)) # is a matrix of size (n_train, n_test)
@@ -372,36 +374,33 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     # print 'estimated mean is ' + str(mu_star)
     # print 'y_test is ' + str(y_test)
 
-    output_folder = 'sampRealData/FPstart2016020612_FR_numObs_' + str(328) + '_numMo_' + str(numMo) \
-    + '/seed' + str(SEED) + '/'
-
     rmse = np.sqrt(np.mean((y_test - mu_star)**2))
 
-    print 'RMSE for seed' + str(SEED) + ' is :' + str(rmse)
+    print 'Out-of-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse)
 
-    rmse_out = open(output_folder + 'rmse.pkl', 'wb')
+    rmse_out = open(output_folder + 'rmse_outSample.pkl', 'wb')
     pickle.dump(rmse, rmse_out) 
     rmse_out.close()
 
     if not crossValFlag:
         index = np.arange(len(y_test))
         standardised_y_estimate = (mu_star - y_test)/np.exp(log_obs_noi_scale)
-        std_yEst_out = open(output_folder + 'std_yEstimate.pkl', 'wb')
+        std_yEst_out = open(output_folder + 'std_yEst_outSample.pkl', 'wb')
         pickle.dump(standardised_y_estimate, std_yEst_out)
         plt.figure()
-        plt.scatter(index, standardised_y_estimate, facecolors='none',  edgecolors='k', linewidths=1.2)
+        plt.scatter(index, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
         # plt.scatter(index, standardised_y_etstimate, c='k')
         plt.axhline(0, color='black', lw=1.2, ls ='-')
         plt.axhline(2, color='black', lw=1.2, ls =':')
         plt.axhline(-2, color='black', lw=1.2, ls =':')
         plt.xlabel('Index')
         plt.ylabel('Standardised residual')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) +'standardised_prediction_errors.png')
+        plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_outSample.png')
         #plt.show()
         plt.close()
 
         sm.qqplot(standardised_y_estimate, line='45')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Normal_Q-Q.png')
+        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'normalQQ_outSample.png')
         #plt.show()
         plt.close()
     
@@ -412,12 +411,12 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     vstar = K_star_star - np.sum(LKstar**2, axis=0).reshape(ntest,1) 
     vstar[vstar < 0] = 1e-9
     vstar = vstar.reshape(ntest, )
-    print 'estimated variance is ' + str(vstar)
+    print 'Out of sample estimated variance is ' + str(vstar)
 
     avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
 
-    print 'Average width of the prediction accuracy for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var) 
-    avgVar_out = open(output_folder + 'avgVar.pkl', 'wb')
+    print 'Out of sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var) 
+    avgVar_out = open(output_folder + 'avgVar_outSample.pkl', 'wb')
     pickle.dump(avg_width_of_predic_var, avgVar_out) 
     avgVar_out.close()
 
@@ -426,18 +425,19 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 
     upper_interval_rounded = np.round(upper_interv_predic, 1)
     lower_interval_rounded = np.round(lower_interv_predic, 1)
-    print 'rounded upper_interval is ' + str(upper_interval_rounded)
-    print 'rounded lower_interval is ' + str(lower_interval_rounded)
+    # print 'rounded upper_interval is ' + str(upper_interval_rounded)
+    # print 'rounded lower_interval is ' + str(lower_interval_rounded)
 
     flag_in_confiInterv_r = (y_test >= lower_interval_rounded) & (y_test <= upper_interval_rounded)
     count_in_confiInterv_r  = np.sum(np.array(map(int, flag_in_confiInterv_r)))
-    print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
+    # print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
     succRate = count_in_confiInterv_r/np.float(len(y_test))
-    print 'prediction accuracy is ' + '{:.1%}'.format(succRate)
+    print 'Out of sample prediction accuracy is ' + '{:.1%}'.format(succRate)
 
-    accuracy_out = open(output_folder + 'predicAccuracy.pkl', 'wb')
+    accuracy_out = open(output_folder + 'predicAccuracy_outSample.pkl', 'wb')
     pickle.dump(succRate, accuracy_out) 
     accuracy_out.close()
+
 
     lower_bound = np.array([-10, -6])
     upper_bound = np.array([-4, 2])
@@ -477,6 +477,85 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     # fig.colorbar(surf, shrink=0.85)
     # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'BM_predic_surf.png')
     # plt.close()
+
+    #*******************************comupute the prediction part for in-sample ntrain test data points under each theta **********************************************************
+    X_test = X_train
+    y_test = y_train
+    ntest = X_test.shape[0]
+    K_star_star = np.zeros((ntest,1))
+    K_star_hatZs = cov_mat_xy(X_train, X_test, np.exp(log_sigma_Zs), np.exp(log_phi_Zs)) # is a matrix of size (n_train, n_test)
+    K_star_hatZs = K_star_hatZs.T
+    _, avg_pointAreal_upper, _, _ = point_areal(X_test, X_tildZs, log_sigma_Zs, log_phi_Zs, b)
+    K_star_tildZs =avg_pointAreal_upper
+
+    K_star = np.hstack((K_star_hatZs, K_star_tildZs))
+    mu_star = np.dot(K_star, u)
+    # print 'estimated mean is ' + str(mu_star)
+    # print 'y_test is ' + str(y_test)
+
+    rmse = np.sqrt(np.mean((y_test - mu_star)**2))
+
+    print 'In-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse)
+
+    rmse_out = open(output_folder + 'rmse_inSample.pkl', 'wb')
+    pickle.dump(rmse, rmse_out) 
+    rmse_out.close()
+
+    if not crossValFlag:
+        index = np.arange(len(y_test))
+        standardised_y_estimate = (mu_star - y_test)/np.exp(log_obs_noi_scale)
+        std_yEst_out = open(output_folder + 'std_yEst_inSample.pkl', 'wb')
+        pickle.dump(standardised_y_estimate, std_yEst_out)
+        plt.figure()
+        plt.scatter(index, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
+        # plt.scatter(index, standardised_y_etstimate, c='k')
+        plt.axhline(0, color='black', lw=1.2, ls ='-')
+        plt.axhline(2, color='black', lw=1.2, ls =':')
+        plt.axhline(-2, color='black', lw=1.2, ls =':')
+        plt.xlabel('Index')
+        plt.ylabel('Standardised residual')
+        plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_inSample.png')
+        #plt.show()
+        plt.close()
+
+        sm.qqplot(standardised_y_estimate, line='45')
+        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'normalQQ_inSample.png')
+        #plt.show()
+        plt.close()
+    
+    LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
+    for i in range(ntest):
+        K_star_star[i] = cov_matrix(X_test[i].reshape(1, 2), np.exp(log_sigma_Zs), np.exp(log_phi_Zs))
+    
+    vstar = K_star_star - np.sum(LKstar**2, axis=0).reshape(ntest,1) 
+    vstar[vstar < 0] = 1e-9
+    vstar = vstar.reshape(ntest, )
+    print 'In-sample estimated variance is ' + str(vstar)
+
+    avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
+
+    print 'In-sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var) 
+    avgVar_out = open(output_folder + 'avgVar_inSample.pkl', 'wb')
+    pickle.dump(avg_width_of_predic_var, avgVar_out) 
+    avgVar_out.close()
+
+    upper_interv_predic = mu_star + 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+    lower_interv_predic = mu_star - 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+
+    upper_interval_rounded = np.round(upper_interv_predic, 1)
+    lower_interval_rounded = np.round(lower_interv_predic, 1)
+    # print 'rounded upper_interval is ' + str(upper_interval_rounded)
+    # print 'rounded lower_interval is ' + str(lower_interval_rounded)
+
+    flag_in_confiInterv_r = (y_test >= lower_interval_rounded) & (y_test <= upper_interval_rounded)
+    count_in_confiInterv_r  = np.sum(np.array(map(int, flag_in_confiInterv_r)))
+    # print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
+    succRate = count_in_confiInterv_r/np.float(len(y_test))
+    print 'In-sample prediction accuracy is ' + '{:.1%}'.format(succRate)
+
+    accuracy_out = open(output_folder + 'predicAccuracy_inSample.pkl', 'wb')
+    pickle.dump(succRate, accuracy_out) 
+    accuracy_out.close()
 
     return succRate
 
