@@ -1,5 +1,4 @@
-
- #!/usr/bin/python -tt   #This line is to solve any difference between spaces and tabs
+#!/usr/bin/python -tt   #This line is to solve any difference between spaces and tabs
 import numpy as np
 import pandas as pd
 import pickle
@@ -14,7 +13,7 @@ import os
 import statsmodels.api as sm
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-plt.switch_backend('agg') # This line is for running code on cluster to make pyplot working on cluster
+# plt.switch_backend('agg') # This line is for running code on cluster to make pyplot working on cluster
 
 # cov_matrix returns the covariance matix, where X is assumed to be stroed row-wise in a matrix, sigma and w are all positive
 def cov_matrix(X, sigma, w, OMEGA = 1e-6):
@@ -83,8 +82,6 @@ def log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, withPrior= False, zeroM
 
     n_hatZs = X_hatZs.shape[0]
     C_hatZs = cov_matrix_reg(X = X_hatZs, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), obs_noi_scale = np.exp(log_obs_noi_scale))
-
-    print zeroMeanHatZs
     
     if zeroMeanHatZs:# treating y_hatZs with mean ZERO (removing mean from y_hatZs)
         mu_hatZs = np.zeros(len(y_hatZs))
@@ -265,35 +262,35 @@ def gradsApprox(theta, X_hatZs, y_hatZs,  withPrior= False,  rbf = True, OMEGA =
     gradapprox = gradapprox.reshape(num_parameters)
    
     return gradapprox
-def check_grads():
+# def check_grads():
 
-    input_folder = 'sampRealData/FPstart2016020612_FR_numObs_' + str(328) + '_numMo_' + str(300) \
-    + '/seed' + str(123) + '/'
-    X_hatZs_in = open(input_folder + 'X_hatZs.pkl', 'rb')
-    X_hatZs = pickle.load(X_hatZs_in) 
-    y_hatZs_in = open(input_folder + 'y_hatZs.pkl', 'rb')
-    y_hatZs = pickle.load(y_hatZs_in) 
+#     input_folder = 'sampRealData/FPstart2016020612_FR_numObs_' + str(328) + '_numMo_' + str(300) \
+#     + '/seed' + str(123) + '/'
+#     X_hatZs_in = open(input_folder + 'X_hatZs.pkl', 'rb')
+#     X_hatZs = pickle.load(X_hatZs_in) 
+#     y_hatZs_in = open(input_folder + 'y_hatZs.pkl', 'rb')
+#     y_hatZs = pickle.load(y_hatZs_in) 
          
-    modelBias = np.array([5.47022754 , 5.22854712, 2.5])
-    initial_theta=np.concatenate((np.array([np.log(1.5), np.log(0.1), np.log(0.1)]),modelBias), axis=0)
-    _, grads_computed = log_obsZs_giv_par_with_grad(initial_theta, X_hatZs, y_hatZs)
-    grads_approx = gradsApprox(initial_theta, X_hatZs, y_hatZs)
-    print 'Computed grads are ' + str(grads_computed)
-    print 'approximated grads are ' + str(grads_approx)
-    numerator = np.linalg.norm(grads_approx- grads_computed)                                
-    denominator = np.linalg.norm(grads_approx)+np.linalg.norm(grads_computed)               
-    difference = numerator/denominator                                          
+#     modelBias = np.array([5.47022754 , 5.22854712, 2.5])
+#     initial_theta=np.concatenate((np.array([np.log(1.5), np.log(0.1), np.log(0.1)]),modelBias), axis=0)
+#     _, grads_computed = log_obsZs_giv_par_with_grad(initial_theta, X_hatZs, y_hatZs)
+#     grads_approx = gradsApprox(initial_theta, X_hatZs, y_hatZs)
+#     print 'Computed grads are ' + str(grads_computed)
+#     print 'approximated grads are ' + str(grads_approx)
+#     numerator = np.linalg.norm(grads_approx- grads_computed)                                
+#     denominator = np.linalg.norm(grads_approx)+np.linalg.norm(grads_computed)               
+#     difference = numerator/denominator                                          
 
-    if difference > 1e-4:
-        print ("\033[93m" + "There is a mistake in computing the gradients! difference = " + str(difference) + "\033[0m")
-    else:
-        print ("\033[92m" + "Computing the gradients works perfectly fine! difference = " + str(difference) + "\033[0m")
+#     if difference > 1e-4:
+#         print ("\033[93m" + "There is a mistake in computing the gradients! difference = " + str(difference) + "\033[0m")
+#     else:
+#         print ("\033[92m" + "Computing the gradients works perfectly fine! difference = " + str(difference) + "\033[0m")
     
-    return difference    
+#     return difference    
 
 def optimise(X_hatZs, y_hatZs, withPrior, useGradsFlag = False, repeat=3, seed =188, zeroMeanHatZs=False, method='L-BFGS-B', rbf=True, OMEGA = 1e-6, \
     bounds = ((-5, 5), (-5, 5), (-5, 5))): 
-    print 'starting optimising when withPrior is ' + str(withPrior)  + '& useGradsFlag is ' + str(useGradsFlag) 
+    print('starting optimising when withPrior is ' + str(withPrior)  + '& useGradsFlag is ' + str(useGradsFlag)) 
     if rbf:
         num_par=1
     else:
@@ -312,8 +309,8 @@ def optimise(X_hatZs, y_hatZs, withPrior, useGradsFlag = False, repeat=3, seed =
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
                 np.log(np.random.gamma(1.2, 1./0.6, 1)), np.zeros(3)), axis=0)
                 bounds = ((-5, 5), (-5, 5), (-5, 5), (-100, 100), (-100, 100), (-100, 100))
-            print 'bouds is ' + str(bounds)
-            print 'initial theta when withPrior is ' + str(withPrior) + '& useGradsFlag is ' + str(useGradsFlag) +  ' :' + str(initial_theta)
+            print('bouds is ' + str(bounds))
+            print('initial theta when withPrior is ' + str(withPrior) + '& useGradsFlag is ' + str(useGradsFlag) +  ' :' + str(initial_theta))
             if useGradsFlag:
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                                x0=initial_theta, method=method,
@@ -326,38 +323,38 @@ def optimise(X_hatZs, y_hatZs, withPrior, useGradsFlag = False, repeat=3, seed =
                                jac=False, bounds = bounds,
                                args=(X_hatZs, y_hatZs, withPrior, zeroMeanHatZs),
                                options={'maxiter': 2000, 'disp': False})
-            print 'The ' + str(count) + ' round of optimisation'
+            print('The ' + str(count) + ' round of optimisation')
         except:
             continue
         if tmp_res['fun'] is not None: # if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
             temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv'].todense()), np.copy(tmp_res['success']), \
             np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
             res.append(temp_res)
-            print 'theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(tmp_res['x'])
+            print('theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(tmp_res['x']))
             if zeroMeanHatZs:
                 parameters = np.exp(np.array(tmp_res['x']))
             else:
                 parameters = (np.exp(np.array(tmp_res['x'])[:3]), np.array(tmp_res['x'])[3:])
             logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, withPrior, zeroMeanHatZs)
-            print 'grads at theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(grads_at_resOptim)
+            print('grads at theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(grads_at_resOptim))
             flag_grads_equal_zero = np.round(grads_at_resOptim, 3) == 0.
             # if gradients from the first optimisation is zero, break out of the loop
             if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
                 LBFGSB_status = True
-                print 'LBFGSB optmisation converged successfully at the '+ str(count) + ' round of optimisation.'
+                print('LBFGSB optmisation converged successfully at the '+ str(count) + ' round of optimisation.')
                 res = np.array(res)
                 res = res.T
-                print 'minus_log_like for repeat ' + str(count)+ ' with LBFGSB is ' + str(res[1, :])
-                print 'parameters after optimisation withPrior is ' + str(withPrior) + \
-                  ' with LBFGSB :'  + str(parameters)
-                print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
-                  ' with LBFGSB :'  + str(np.array(tmp_res['hess_inv'].todense()))
-                print 'Optim status withPrior is ' + str(withPrior) + \
-                  ' with LBFGSB :'  + str(np.array(tmp_res['success']))
-                print 'Optim message withPrior is ' + str(withPrior) + \
-                 ' with LBFGSB :'  + str(np.array(tmp_res['message']))
-                print 'Optim nit withPrior is ' + str(withPrior) + \
-                  ' with LBFGSB :'  + str(np.array(tmp_res['nit']))
+                print('minus_log_like for repeat ' + str(count)+ ' with LBFGSB is ' + str(res[1, :]))
+                print('parameters after optimisation withPrior is ' + str(withPrior) + \
+                  ' with LBFGSB :'  + str(parameters))
+                print('covariance of pars after optimisation withPrior is ' + str(withPrior) + \
+                  ' with LBFGSB :'  + str(np.array(tmp_res['hess_inv'].todense())))
+                print('Optim status withPrior is ' + str(withPrior) + \
+                  ' with LBFGSB :'  + str(np.array(tmp_res['success'])))
+                print('Optim message withPrior is ' + str(withPrior) + \
+                 ' with LBFGSB :'  + str(np.array(tmp_res['message'])))
+                print('Optim nit withPrior is ' + str(withPrior) + \
+                  ' with LBFGSB :'  + str(np.array(tmp_res['nit'])))
                 break
             else:#if gradients from the LBFGSB optimisation is NOT zero, do another BFGSB optimisation
                 if count == (repeat -1):#if gradients from the all LBFGSB optimisation is NOT zero, do ONE ROUND OF  NON constraint optimisation AT THE LAST STEP
@@ -365,34 +362,34 @@ def optimise(X_hatZs, y_hatZs, withPrior, useGradsFlag = False, repeat=3, seed =
                     f1 = open(file, 'wb')
                     f1.close()
 
-                    print 'initial theta from LBFGSB optimisation for BFGS is ' + str(tmp_res['x'])
+                    print('initial theta from LBFGSB optimisation for BFGS is ' + str(tmp_res['x']))
                     tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                                    x0=tmp_res['x'], method='BFGS',
                                    jac=True,
                                    args=(X_hatZs, y_hatZs, withPrior, zeroMeanHatZs),
                                    options={'maxiter': 2000, 'disp': False})
-                    print 'theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(tmp_res['x'])
+                    print('theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(tmp_res['x']))
                     if zeroMeanHatZs:
                         parameters = np.exp(np.array(tmp_res['x']))
                     else:
                         parameters = (np.exp(np.array(tmp_res['x'])[:3]), np.array(tmp_res['x'])[3:])
                     logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, withPrior, zeroMeanHatZs)
-                    print 'grads at theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(grads_at_resOptim)
+                    print('grads at theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(grads_at_resOptim))
                     flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
                     # if gradients from the BFGS optimisation is zero, break out of the loop
                     if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
-                        print 'BFGS optmisation converged successfully at the '+ str(count) + ' round of optimisation.'
-                        print 'minus_log_like for repeat ' + str(count)+ ' with BFGS is ' + str(tmp_res['fun'])
-                        print 'parameters after optimisation withPrior is ' + str(withPrior) + \
-                        ' with BFGS :'  + str(parameters)
-                        print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
-                 ' with BFGS :'  + str(np.array(tmp_res['hess_inv']))
-                        print 'Optim status withPrior is ' + str(withPrior) + \
-                         ' with BFGS :'  + str(np.array(tmp_res['success']))
-                        print 'Optim message withPrior is ' + str(withPrior) + \
-                         ' with BFGS :'  + str(np.array(tmp_res['message']))
-                        print 'Optim nit withPrior is ' + str(withPrior) + \
-                          ' with BFGS :'  + str(np.array(tmp_res['nit']))
+                        print('BFGS optmisation converged successfully at the '+ str(count) + ' round of optimisation.')
+                        print('minus_log_like for repeat ' + str(count)+ ' with BFGS is ' + str(tmp_res['fun']))
+                        print('parameters after optimisation withPrior is ' + str(withPrior) + \
+                        ' with BFGS :'  + str(parameters))
+                        print('covariance of pars after optimisation withPrior is ' + str(withPrior) + \
+                 ' with BFGS :'  + str(np.array(tmp_res['hess_inv'])))
+                        print('Optim status withPrior is ' + str(withPrior) + \
+                         ' with BFGS :'  + str(np.array(tmp_res['success'])))
+                        print('Optim message withPrior is ' + str(withPrior) + \
+                         ' with BFGS :'  + str(np.array(tmp_res['message'])))
+                        print('Optim nit withPrior is ' + str(withPrior) + \
+                          ' with BFGS :'  + str(np.array(tmp_res['nit'])))
                     
                 count += 1        
         else:# if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
@@ -402,7 +399,7 @@ def optimise(X_hatZs, y_hatZs, withPrior, useGradsFlag = False, repeat=3, seed =
     else:
         return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'])]
 
-def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = True, SEED=None, zeroMeanHatZs = False,  \
+def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = True, SEED=None, zeroMeanHatZs = False, useSimData =False, \
  withPrior= False, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
@@ -431,7 +428,9 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     l_chol_C = compute_L_chol(C_hatZs)
     u = linalg.solve_triangular(l_chol_C.T, linalg.solve_triangular(l_chol_C, y - mu_train, lower=True))
 
-    output_folder = 'Kriging/seed' + str(SEED) + '/'
+    # output_folder = 'Kriging/seed' + str(SEED) + '/'
+    # output_folder = 'dataSimGpDeltas/kriging/numObs_300/seed' + str(SEED) + '/'
+    output_folder = 'dataSimulated/kriging/numObs_200/seed' + str(SEED) + '/'
 
     #*******************************comupute the prediction part for out sample ntest test data points under each theta **********************************************************
     ntest = X_test.shape[0]
@@ -454,8 +453,9 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     # print 'y_test is ' + str(y_test)
 
     rmse = np.sqrt(np.mean((y_test - mu_star)**2))
-
-    print 'Out-of-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse)
+    print('Out-of-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
+    rmse = y_test - mu_star
+    print('Out-of-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
 
     rmse_out = open(output_folder + 'rmse_krig_outSample.pkl', 'wb')
     pickle.dump(rmse, rmse_out) 
@@ -464,22 +464,22 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     if not crossValFlag:
         index = np.arange(len(y_test))
         standardised_y_estimate = (mu_star - mu_test)/np.exp(log_obs_noi_scale)
-        plt.figure()
-        plt.scatter(index, standardised_y_estimate, facecolors='none',  edgecolors='k', linewidths=1.2)
-        # plt.scatter(index, standardised_y_etstimate, c='k')
-        plt.axhline(0, color='black', lw=1.2, ls ='-')
-        plt.axhline(2, color='black', lw=1.2, ls =':')
-        plt.axhline(-2, color='black', lw=1.2, ls =':')
-        plt.xlabel('Index')
-        plt.ylabel('Standardised residual')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_krig_outSample.png')
-        plt.show()
-        plt.close()
+        # plt.figure()
+        # plt.scatter(index, standardised_y_estimate, facecolors='none',  edgecolors='k', linewidths=1.2)
+        # # plt.scatter(index, standardised_y_etstimate, c='k')
+        # plt.axhline(0, color='black', lw=1.2, ls ='-')
+        # plt.axhline(2, color='black', lw=1.2, ls =':')
+        # plt.axhline(-2, color='black', lw=1.2, ls =':')
+        # plt.xlabel('Index')
+        # plt.ylabel('Standardised residual')
+        # plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_krig_outSample.png')
+        # plt.show()
+        # plt.close()
 
-        sm.qqplot(standardised_y_estimate, line='45')
-        plt.savefig(output_folder + 'SEED' + str(SEED) + 'normalQQ_krig_outSample.png')
-        plt.show()
-        plt.close()
+        # sm.qqplot(standardised_y_estimate, line='45')
+        # plt.savefig(output_folder + 'SEED' + str(SEED) + 'normalQQ_krig_outSample.png')
+        # plt.show()
+        # plt.close()
     
     LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
     for i in range(ntest):
@@ -488,18 +488,27 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     vstar = K_star_star - np.sum(LKstar**2, axis=0).reshape(ntest,1) 
     vstar[vstar < 0] = 1e-9
     vstar = vstar.reshape(ntest, )
-    print 'Out of sample estimated variance is ' + str(vstar)
+    # print('Out of sample estimated variance is ' + str(vstar))
 
-    avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
+    if useSimData:
+        # avg_width_of_predic_var = np.mean(np.sqrt(vstar))
+        avg_width_of_predic_var = np.sqrt(vstar)
+    else:
+        avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
 
-    print 'Out of sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var) 
+    print('Out of sample width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var)) 
+    # print('Out of sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var)) 
 
     avgVar_out = open(output_folder + 'avgVar_krig_outSample.pkl', 'wb')
     pickle.dump(avg_width_of_predic_var, avgVar_out) 
     avgVar_out.close()
 
-    upper_interv_predic = mu_star + 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
-    lower_interv_predic = mu_star - 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+    if useSimData:
+        upper_interv_predic = mu_star + 2 * np.sqrt(vstar)
+        lower_interv_predic = mu_star - 2 * np.sqrt(vstar)
+    else:
+        upper_interv_predic = mu_star + 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+        lower_interv_predic = mu_star - 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
 
     upper_interval_rounded = np.round(upper_interv_predic, 1)
     lower_interval_rounded = np.round(lower_interv_predic, 1)
@@ -507,59 +516,95 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     # print 'rounded lower_interval is ' + str(lower_interval_rounded)
 
     flag_in_confiInterv_r = (y_test >= lower_interval_rounded) & (y_test <= upper_interval_rounded)
-    count_in_confiInterv_r  = np.sum(np.array(map(int, flag_in_confiInterv_r)))
+    flag_in_confiInterv_r = flag_in_confiInterv_r.astype(int)
+    print('flag_in_confiInterv_r is ' + str(flag_in_confiInterv_r))
+    count_in_confiInterv_r  = np.sum(flag_in_confiInterv_r.astype(int))
     # print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
     succRate = count_in_confiInterv_r/np.float(len(y_test))
-    print 'Out of sample prediction accuracy is ' + '{:.1%}'.format(succRate)
+    print('Out of sample prediction accuracy is ' + '{:.1%}'.format(succRate))
 
     accuracy_out = open(output_folder + 'predicAccuracy_krig_outSample.pkl', 'wb')
-    pickle.dump(succRate, accuracy_out) 
+    pickle.dump(flag_in_confiInterv_r, accuracy_out) 
+    # pickle.dump(succRate, accuracy_out) 
     accuracy_out.close()
 
-    lower_bound = np.array([-10, -6])
-    upper_bound = np.array([-4, 2])
-    point_res = 20
-    x1, x2 = np.meshgrid(np.linspace(lower_bound[0], upper_bound[0], point_res),  
-                         np.linspace(lower_bound[1], upper_bound[1], point_res))
-    x1_vec = x1.ravel()
-    x2_vec = x2.ravel()
-    X_plot = np.vstack((x1_vec, x2_vec)).T
-    #*******************************comupute the prediction part for ntest test data points under each theta **********************************************************
-    ntest = X_plot.shape[0]
-    K_star_star = np.zeros((ntest,1))
-    K_star_hatZs = cov_mat_xy(X_train, X_plot, np.exp(log_sigma_Zs), np.exp(log_phi_Zs)) # is a matrix of size (n_train, n_test)
-    K_star_hatZs = K_star_hatZs.T
-    K_star = K_star_hatZs
+    lower_bound = np.array([-12., -6.5])
+    upper_bound = np.array([-3., 3.])
+    point_res = 100
+    print('len of mu_star is ' + str(len(mu_star)))
+
+    # lower_bound = np.array([-10, -6])
+    # upper_bound = np.array([-4, 2])
+    # point_res = 20
+    # x1, x2 = np.meshgrid(np.linspace(lower_bound[0], upper_bound[0], point_res),  
+    #                      np.linspace(lower_bound[1], upper_bound[1], point_res))
+    # x1_vec = x1.ravel()
+    # x2_vec = x2.ravel()
+    # X_plot = np.vstack((x1_vec, x2_vec)).T
+    # #*******************************comupute the prediction part for ntest test data points under each theta **********************************************************
+    # ntest = X_plot.shape[0]
+    # K_star_star = np.zeros((ntest,1))
+    # K_star_hatZs = cov_mat_xy(X_train, X_plot, np.exp(log_sigma_Zs), np.exp(log_phi_Zs)) # is a matrix of size (n_train, n_test)
+    # K_star_hatZs = K_star_hatZs.T
+    # K_star = K_star_hatZs
     
-    if zeroMeanHatZs:
-        mu_test = np.zeros(ntest)
-    else:
-        n_row = X_test.shape[0]
-        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
-        X_plot_extend = np.hstack((X_plot, tmp0))
-        mu_test = np.dot(X_plot_extend, mu_hatZs_coeffis)
+    # if zeroMeanHatZs:
+    #     mu_test = np.zeros(ntest)
+    # else:
+    #     n_row = X_test.shape[0]
+    #     tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+    #     X_plot_extend = np.hstack((X_plot, tmp0))
+    #     mu_test = np.dot(X_plot_extend, mu_hatZs_coeffis)
 
-    mu_plot = mu_test + np.dot(K_star, u)
+    # mu_plot = mu_test + np.dot(K_star, u)
 
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    scat = ax.scatter(x1_vec, x2_vec, mu_plot, c=mu_plot, cmap='viridis', linewidth=0.5)
-    ax.set_xlabel('$lon$')
-    ax.set_ylabel('$lat$')
-    ax.set_zlabel('$Z(s)$')
-    fig.colorbar(scat, shrink=0.85)
-    plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Krig_predic_scat.png')
-    plt.close()
+    # fig = plt.figure()
+    # ax = Axes3D(fig)
+    # scat = ax.scatter(x1_vec, x2_vec, mu_plot, c=mu_plot, cmap='viridis', linewidth=0.5)
+    # ax.set_xlabel('$lon$')
+    # ax.set_ylabel('$lat$')
+    # ax.set_zlabel('$Z(s)$')
+    # fig.colorbar(scat, shrink=0.85)
+    # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Krig_predic_scat.png')
+    # ax = plt.gca()
+    # plt.close()
 
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    surf = ax.plot_surface(x1, x2, mu_plot.reshape(point_res, point_res), rstride=1, cstride=1, cmap='viridis')
-    ax.set_xlabel('$lon$')
-    ax.set_ylabel('$lat$')
-    ax.set_zlabel('$Z(s)$')
-    fig.colorbar(surf, shrink=0.85)
-    plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Krig_predic_surf.png')
-    plt.close()
+    # plt.figure()
+    # # im = plt.imshow(np.flipud(mu_star.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap ='viridis', vmin =-8.638859242408106, vmax=6.245641349797348)
+    # im = plt.imshow(np.flipud(mu_star.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap =plt.matplotlib.cm.jet, vmin =-11.9, vmax=13.6)
+    # print (mu_star.min(), mu_star.max())
+    # # plt.scatter(X_hatZs[:,0], X_hatZs[:,1], s=12, c='k', marker = 'o')
+    # cb=plt.colorbar(im)
+    # cb.set_label('${Z(s)}$')
+    # # plt.title('min = %.2f , max = %.2f , avg = %.2f' % (mu_plot.min(), mu_plot.max(), mu_plot.mean()))
+    # plt.xlabel('$lon$')
+    # plt.ylabel('$lat$')
+    # plt.title('Prediction of Kriging')
+    # plt.grid()
+    # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Krig_predic_2D.png')
+    # plt.show()
+    # plt.close()
+
+    # fig = plt.figure()
+    # ax = Axes3D(fig)
+    # surf = ax.plot_surface(x1, x2, mu_plot.reshape(point_res, point_res), rstride=1, cstride=1, cmap='viridis')
+    # ax.set_ylim([-6.4, 2.4])
+    # ax.set_xlim([-10.3, -3.7])
+    # ax.set_zlim([-15.59134157, 9.48444387])
+    # #axis for numMO = 250
+    # # ax.set_ylim([-6.4, 2.4])
+    # # ax.set_xlim([-10.3, -3.7])
+    # # ax.set_zlim([-13.52702345, 9.36814273])
+    # ax.set_xlabel('$lon$')
+    # ax.set_ylabel('$lat$')
+    # ax.set_zlabel('$Z(s)$')
+    # fig.colorbar(surf, shrink=0.85)
+    # # ax = plt.gca()
+    # # print 'ylim is ' + str(ax.get_ylim())
+    # # print 'xlim is ' + str(ax.get_xlim())
+    # # print 'zlim is ' + str(ax.get_zlim())
+    # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Krig_predic_surf.png')
+    # plt.close()
     #*******************************comupute the prediction part for in sample ntrain test data points under each theta **********************************************************
     X_test = X_train
     y_test = y_train
@@ -582,7 +627,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
 
     rmse = np.sqrt(np.mean((y_test - mu_star)**2))
 
-    print 'In-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse)
+    print('In-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
 
     rmse_out = open(output_folder + 'rmse_krig_inSample.pkl', 'wb')
     pickle.dump(rmse, rmse_out) 
@@ -600,12 +645,12 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
         plt.xlabel('Index')
         plt.ylabel('Standardised residual')
         plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_krig_inSample.png')
-        plt.show()
+        # plt.show()
         plt.close()
 
         sm.qqplot(standardised_y_estimate, line='45')
         plt.savefig(output_folder + 'SEED' + str(SEED) + 'normalQQ_krig_inSample.png')
-        plt.show()
+        # plt.show()
         plt.close()
     
     LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
@@ -615,11 +660,11 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     vstar = K_star_star - np.sum(LKstar**2, axis=0).reshape(ntest,1) 
     vstar[vstar < 0] = 1e-9
     vstar = vstar.reshape(ntest, )
-    print 'In sample estimated variance is ' + str(vstar)
+    # print('In sample estimated variance is ' + str(vstar))
 
     avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
 
-    print 'In sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var) 
+    print('In sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var)) 
 
     avgVar_out = open(output_folder + 'avgVar_krig_inSample.pkl', 'wb')
     pickle.dump(avg_width_of_predic_var, avgVar_out) 
@@ -634,10 +679,10 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     # print 'rounded lower_interval is ' + str(lower_interval_rounded)
 
     flag_in_confiInterv_r = (y_test >= lower_interval_rounded) & (y_test <= upper_interval_rounded)
-    count_in_confiInterv_r  = np.sum(np.array(map(int, flag_in_confiInterv_r)))
+    count_in_confiInterv_r  = np.sum(flag_in_confiInterv_r.astype(int))
     # print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
     succRate = count_in_confiInterv_r/np.float(len(y_test))
-    print 'In sample prediction accuracy is ' + '{:.1%}'.format(succRate)
+    print('In sample prediction accuracy is ' + '{:.1%}'.format(succRate))
 
     accuracy_out = open(output_folder + 'predicAccuracy_krig_inSample.pkl', 'wb')
     pickle.dump(succRate, accuracy_out) 
@@ -646,38 +691,48 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     return succRate
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
-    p.add_argument('-SEED', type=int, dest='SEED', default=120, help='The simulation index')
+    p.add_argument('-SEED', type=int, dest='SEED', default=200, help='The simulation index')
     p.add_argument('-repeat', type=int, dest='repeat', default=1, help='number of repeats in optimisation')
     p.add_argument('-o', type=str, dest='output', default=None, help='Output folder')
     p.add_argument('-withPrior', dest='withPrior', default=False,  type=lambda x: (str(x).lower() == 'true'), help='flag for ML or MAP')
-    p.add_argument('-lsZs', type=float, dest='lsZs', default=0.1, help='lengthscale of the GP covariance for Zs')
-    p.add_argument('-sigZs', type=float, dest='sigZs', default=1.5, help='sigma (marginal variance) of the GP covariance for Zs')
+    p.add_argument('-lsZs', type=float, dest='lsZs', default=0.8, help='lengthscale of the GP covariance for Zs')
+    p.add_argument('-sigZs', type=float, dest='sigZs', default=1.0, help='sigma (marginal variance) of the GP covariance for Zs')
     p.add_argument('-useGradsFlag', dest='useGradsFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use analytically computed gradients to do optimisation')
     p.add_argument('-cntry', type=str, dest='cntry', default='FR', help='Country of the geo data used')
     p.add_argument('-usecntryFlag', dest='usecntryFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use data for a specific country')
-    p.add_argument('-numObs', type=int, dest='numObs', default=328, help='Number of observations used in modelling')
-    p.add_argument('-numMo', type=int, dest='numMo', default=250, help='Number of model outputs used in modelling')
+    p.add_argument('-numObs', type=int, dest='numObs', default=200, help='Number of observations used in modelling')
+    p.add_argument('-numMo', type=int, dest='numMo', default=50, help='Number of model outputs used in modelling')
     p.add_argument('-crossValFlag', dest='crossValFlag', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='whether to validate the model using cross validation')
     p.add_argument('-idxFold', type=int, dest='idxFold', default=9, help='the index for the fold for cross validation')
     p.add_argument('-zeroMeanHatZs', dest='zeroMeanHatZs', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='whether to zero mean for y_hatZs')
+    p.add_argument('-useSimData', dest='useSimData', default=True,  type=lambda x: (str(x).lower() == 'true'), \
+        help='flag for whether to use simulated data')
     args = p.parse_args()
     if args.output is None: args.output = os.getcwd()
     if args.usecntryFlag:
-        output_folder = args.output + '/Kriging/seed' + str(args.SEED) 
+        if args.useSimData:  
+            output_folder = args.output + '/dataSimulated/kriging/numObs_' + str(args.numObs) + '/seed' + str(args.SEED) 
+            # output_folder = args.output + '/dataSimGpDeltas/kriging/numObs_' + str(args.numObs) + '/seed' + str(args.SEED) 
+        else:
+            output_folder = args.output + '/kriging/seed' + str(args.SEED) 
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     output_folder += '/'
-    print 'Output: ' + output_folder
+    print('Output: ' + output_folder)
 
     start = default_timer()
     np.random.seed(args.SEED)
-    input_folder = 'Data/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
-    + '/seed' + str(args.SEED) + '/'
-    
+    if args.useSimData: 
+        input_folder = os.getcwd() + '/dataSimulated/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+        # input_folder = os.getcwd() + '/dataSimGpDeltas/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+    else:
+        input_folder = 'Data/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
+        + '/seed' + str(args.SEED) + '/'
+        
     if args.usecntryFlag:
         if args.crossValFlag:
             input_folder = input_folder + '/fold_' + str(args.idxFold) + '/'
@@ -700,74 +755,87 @@ if __name__ == '__main__':
                 y_hatZs_in = open(input_folder + 'y_hatZs.pkl', 'rb')
             else:
                 y_hatZs_in = open(input_folder + 'y_hatZs_withMean.pkl', 'rb')
-            print 'y_hatZs_in is ' + str(y_hatZs_in)
+    
             y_hatZs = pickle.load(y_hatZs_in) 
 
             areal_hatZs_in = open(input_folder + 'areal_hatZs.pkl', 'rb')
             areal_hatZs = pickle.load(areal_hatZs_in)
 
-    print args.zeroMeanHatZs
     if args.crossValFlag:   
         mu, cov = optimise(X_train, y_train, args.withPrior, args.useGradsFlag, args.repeat, args.SEED, args.zeroMeanHatZs)
     else:   
         mu, cov = optimise(X_hatZs, y_hatZs, args.withPrior, args.useGradsFlag, args.repeat, args.SEED, args.zeroMeanHatZs)
 
     end = default_timer()
-    print 'running time for optimisation is ' + str(end - start) + ' seconds'
+    print('running time for optimisation is ' + str(end - start) + ' seconds')
 
-    # computing the 95% confidence intervals  for each parameters
+    # # computing the 95% confidence intervals  for each parameters
 
-    if args.zeroMeanHatZs:
-        cov_pars = np.exp(np.array(mu))
-        pars = cov_pars
-    else:
-        cov_pars = np.exp(np.array(mu[:3]))
-        bias_pars = np.array(mu[3:])
-        pars = np.concatenate((cov_pars, bias_pars))
-    pars = np.round(pars,1)
-    print 'estimated pars rounded to one decimal point :' + str(pars)
+    # if args.zeroMeanHatZs:
+    #     cov_pars = np.exp(np.array(mu))
+    #     pars = cov_pars
+    # else:
+    #     cov_pars = np.exp(np.array(mu[:3]))
+    #     bias_pars = np.array(mu[3:])
+    #     pars = np.concatenate((cov_pars, bias_pars))
+    # pars = np.round(pars,1)
+    # print('estimated pars rounded to one decimal point :' + str(pars))
 
-    tmp = np.diag(np.array(cov))
-    if args.zeroMeanHatZs:
-        variance_log_covPars = tmp
-        print 'variance_log_covPars is ' + str(variance_log_covPars)
-        upper_interv_covPars = np.exp(mu + 2 * np.sqrt(variance_log_covPars))
-        lower_interv_covPars = np.exp(mu - 2 * np.sqrt(variance_log_covPars))
-        upper_interval = upper_interv_covPars
-        lower_interval = lower_interv_covPars
-        print 'upper_interval is ' + str(upper_interval)
-        print 'lower_interval is ' + str(lower_interval)
-    else:
-        variance_log_covPars = tmp[:3]
-        print 'variance_log_covPars is ' + str(variance_log_covPars)
-        variance_biasPars = tmp[3:]
-        print 'variance_biasPars is ' + str(variance_biasPars)
-        upper_interv_covPars = np.exp(mu[:3] + 2 * np.sqrt(variance_log_covPars))
-        lower_interv_covPars = np.exp(mu[:3] - 2 * np.sqrt(variance_log_covPars))
-        upper_interv_biasPars = bias_pars + 2 * np.sqrt(variance_biasPars)
-        lower_interv_biasPars = bias_pars - 2 * np.sqrt(variance_biasPars)
-        upper_interval = np.concatenate((upper_interv_covPars, upper_interv_biasPars))
-        lower_interval = np.concatenate((lower_interv_covPars, lower_interv_biasPars))
+    # tmp = np.diag(np.array(cov))
+    # if args.zeroMeanHatZs:
+    #     variance_log_covPars = tmp
+    #     print('variance_log_covPars is ' + str(variance_log_covPars))
+    #     upper_interv_covPars = np.exp(mu + 2 * np.sqrt(variance_log_covPars))
+    #     lower_interv_covPars = np.exp(mu - 2 * np.sqrt(variance_log_covPars))
+    #     upper_interval = upper_interv_covPars
+    #     lower_interval = lower_interv_covPars
+    #     print('upper_interval is ' + str(upper_interval))
+    #     print('lower_interval is ' + str(lower_interval))
+    # else:
+    #     variance_log_covPars = tmp[:3]
+    #     print('variance_log_covPars is ' + str(variance_log_covPars))
+    #     variance_biasPars = tmp[3:]
+    #     print('variance_biasPars is ' + str(variance_biasPars))
+    #     upper_interv_covPars = np.exp(mu[:3] + 2 * np.sqrt(variance_log_covPars))
+    #     lower_interv_covPars = np.exp(mu[:3] - 2 * np.sqrt(variance_log_covPars))
+    #     upper_interv_biasPars = bias_pars + 2 * np.sqrt(variance_biasPars)
+    #     lower_interv_biasPars = bias_pars - 2 * np.sqrt(variance_biasPars)
+    #     upper_interval = np.concatenate((upper_interv_covPars, upper_interv_biasPars))
+    #     lower_interval = np.concatenate((lower_interv_covPars, lower_interv_biasPars))
 
-    upper_interval_rounded = np.round(upper_interval, 1)
-    lower_interval_rounded = np.round(lower_interval, 1)
-    print 'rounded upper_interval is ' + str(upper_interval_rounded)
-    print 'rounded lower_interval is ' + str(lower_interval_rounded)
+    # upper_interval_rounded = np.round(upper_interval, 1)
+    # lower_interval_rounded = np.round(lower_interval, 1)
+    # print('rounded upper_interval is ' + str(upper_interval_rounded))
+    # print('rounded lower_interval is ' + str(lower_interval_rounded))
 
-    res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
-'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded}
+#     res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
+# 'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded}
+    res = {'mu':mu, 'cov':cov}
     res_out = open(output_folder  + 'resOptim_krig.pkl', 'wb')
     pickle.dump(res, res_out)
     res_out.close()
     if args.crossValFlag:
         predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, args.crossValFlag, args.SEED, args.zeroMeanHatZs)
-        print 'predic_accuracy for seed ' + str(args.SEED) + ' fold ' + str(args.idxFold) + ' is ' + '{:.1%}'.format(predic_accuracy)
+        print('predic_accuracy for seed ' + str(args.SEED) + ' fold ' + str(args.idxFold) + ' is ' + '{:.1%}'.format(predic_accuracy))
     else:
-        X_train = X_hatZs[:-50, :]
-        X_test = X_hatZs[-50:, :]
-        y_train = y_hatZs[:-50]
-        y_test = y_hatZs[-50:]
-        predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, args.crossValFlag, args.SEED, args.zeroMeanHatZs)
+        # X_train = X_hatZs[:-50, :]
+        # X_test = X_hatZs[-50:, :]
+        # y_train = y_hatZs[:-50]
+        # y_test = y_hatZs[-50:]
+
+        X_train = X_hatZs
+        y_train = y_hatZs
+
+        input_folder = os.getcwd() + '/dataSimulated/seed' + str(args.SEED) + '/'
+        all_X_Zs_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
+        all_X_Zs = pickle.load(all_X_Zs_in) 
+
+        all_y_Zs_in = open(input_folder + 'all_y_Zs.pickle', 'rb')
+        all_y_Zs = pickle.load(all_y_Zs_in) 
+
+        X_test = all_X_Zs
+        y_test = all_y_Zs
+        predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, args.crossValFlag, args.SEED, args.zeroMeanHatZs, args.useSimData)
         # print 'predic_accuracy for seed ' + str(args.SEED)  + ' is ' + '{:.1%}'.format(predic_accuracy)
 
 

@@ -144,7 +144,7 @@ def test_fun(useCluster, SEED):
     else:
         X_hatZs, y_hatZs, X_tildZs, y_tildZs = ldNetCDF.loadNetCdf(SEED =SEED)
 
-    print (X_hatZs.shape, y_hatZs.shape, X_tildZs.shape, y_tildZs.shape)
+    print((X_hatZs.shape, y_hatZs.shape, X_tildZs.shape, y_tildZs.shape))
     
 
    
@@ -152,7 +152,7 @@ def test_fun(useCluster, SEED):
 
     _, grads = log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_modelOut = True, withPrior= False, \
     a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6)
-    print grads
+    print(grads)
 
     num_par = 1
     # initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
@@ -166,21 +166,21 @@ def test_fun(useCluster, SEED):
                         np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), modelBias), axis=0)
     
     res = log_obsZs_giv_par(initial_theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_modelOut = True)
-    print res
+    print(res)
     log_pos, _ = log_obsZs_giv_par_with_grad(initial_theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_modelOut = True)
-    print log_pos
+    print(log_pos)
     
     exit(-1)
     covAreas, grad_C_tildZs = cov_areal(X_tildZs, np.log(1.5), [np.log(0.1)], 3., np.log(1.0), gp_deltas_modelOut=True, log_phi_deltas_of_modelOut = [np.log(0.2)],  \
      areal_res=20, OMEGA = 1e-6)
-    print len(grad_C_tildZs)
-    print grad_C_tildZs[0].shape
+    print(len(grad_C_tildZs))
+    print(grad_C_tildZs[0].shape)
     avg_pointAreal_lower, avg_pointAreal_upper, grad_C_pointAreal_lower, grad_C_pointAreal_upper = \
     point_areal(X_hatZs, X_tildZs, np.log(1.5), [np.log(0.1)], 2., pointArealFlag = True)
-    print ' shape of upper point areal is ' + str (avg_pointAreal_upper.shape)
-    print avg_pointAreal_lower.shape
-    print len(grad_C_pointAreal_upper)
-    print grad_C_pointAreal_upper[0].shape
+    print(' shape of upper point areal is ' + str (avg_pointAreal_upper.shape))
+    print(avg_pointAreal_lower.shape)
+    print(len(grad_C_pointAreal_upper))
+    print(grad_C_pointAreal_upper[0].shape)
 
 def cov_mat_xy(x, y, sigma, w):
     w = np.array(w)
@@ -916,67 +916,6 @@ def minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, 
 
     return minus_log_pos
 
-def hmcSampler(mu, hess_inv, grad_current_pos, log_like_current_pos, X_hatZs, y_hatZs, X_tildZs,\
- y_tildZs, epsilon0=0.15, minL=6, maxL=12, OMEGA = 1e-6):
-    print 'diagonal of hess_inv ' + str(np.diag(hess_inv))
-    while True:
-        l_chol_hess_inv = np.linalg.cholesky(hess_inv)
-        minusHessian = linalg.solve_triangular(l_chol_hess_inv.T, linalg.solve_triangular(l_chol_hess_inv, np.eye(len(mu)), lower=True))
-        massMatrix = minusHessian
-
-        l_chol_M = np.linalg.cholesky(massMatrix)
-
-        current_position = mu
-
-
-        current_momentum = np.dot(l_chol_M, np.random.normal(size=[len(current_position), 1])).reshape(len(current_position))
-        tmp0 =  linalg.solve_triangular(l_chol_M, current_momentum, lower=True)
-        current_kinetic = 0.5 * np.inner(tmp0,tmp0)
-
-        proposed_momentum= current_momentum
-        proposed_position = current_position
-        grad_proposed_pos = grad_current_pos
-
-        premature_reject = 0      
-        L = np.random.randint(minL,maxL,1)
-        print 'L is' + str(L)
-
-        for k in range(L):
-            print 'k is ' + str(k)
-            epsilon = np.random.exponential(epsilon0) #Randomization of the stepsize
-            print 'epsilon is ' + str(epsilon)
-            p_half= proposed_momentum + epsilon/2. * grad_proposed_pos
-
-            if (np.isinf(p_half) + np.isnan(p_half)).any():
-                premature_reject = 1
-                break
-            proposed_position = proposed_position + epsilon * linalg.solve_triangular(l_chol_M.T, linalg.solve_triangular(l_chol_M, p_half, lower=True))
-        
-            if np.max(np.abs(proposed_position)) > 20:
-                premature_reject =1 
-                break
-
-            log_like_proposed_pos, grad_proposed_pos = log_obsZs_giv_par_with_grad(proposed_position, X_hatZs, y_hatZs, X_tildZs, y_tildZs)
-
-            proposed_momentum = p_half + epsilon/2. * grad_proposed_pos             
-            if (np.isinf(proposed_momentum) + np.isnan(proposed_momentum)).any():
-                premature_reject =1
-                break
-
-            tmp1 = linalg.solve_triangular(l_chol_M, proposed_momentum, lower=True)
-            proposed_kinetic = 0.5 * np.inner(tmp1,tmp1)
-
-        if premature_reject==1:
-            A = -np.inf
-        if premature_reject==0:
-            A = np.min([0, log_like_proposed_pos - log_like_current_pos - proposed_kinetic + current_kinetic])
-        if np.isnan(A):
-            A = - np.inf
-        print 'acceptance status is ' + str(-np.random.exponential(1) < A)
-        if -np.random.exponential(1) < A:
-            break
-    return [proposed_position, grad_proposed_pos, log_like_proposed_pos]
-
 def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat, seed, numMo):
     res = []
     count1 = 0
@@ -990,7 +929,7 @@ def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withP
             else:
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
                 np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4)), axis=0)
-            print 'initial theta in optim_fun :' + str(initial_theta)
+            print('initial theta in optim_fun :' + str(initial_theta))
             if useGradsFlag:
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                                x0=initial_theta, method=method,
@@ -1003,22 +942,22 @@ def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withP
                                jac=False, bounds = bounds,
                                args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
                                options={'maxiter': 2000, 'disp': False})
-            print 'The ' + str(count1) + ' repeat of optimisation in optim_fun'
+            print('The ' + str(count1) + ' repeat of optimisation in optim_fun')
         except:
             continue
         if tmp_res['fun'] is not None: # if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
             temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv'].todense()), np.copy(tmp_res['success']), \
             np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
             res.append(temp_res)
-            print 'theta from the ' + str(count1) + ' repeat of optimisation with LBFGSB in optim_fun is ' + str(tmp_res['x'])
+            print('theta from the ' + str(count1) + ' repeat of optimisation with LBFGSB in optim_fun is ' + str(tmp_res['x']))
             logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
                 gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
-            print 'grads at theta from the ' + str(count1) + ' repeat of optimisation with LBFGSB in optim_fun is ' + str(grads_at_resOptim)
+            print('grads at theta from the ' + str(count1) + ' repeat of optimisation with LBFGSB in optim_fun is ' + str(grads_at_resOptim))
             flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
             # if gradients from the first optimisation is zero, break out of the loop
             if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
                 LBFGSB_status = True
-                print 'LBFGSB optmisation converged successfully at the '+ str(count1) + ' repeat of optimisation in optim_fun.'
+                print('LBFGSB optmisation converged successfully at the '+ str(count1) + ' repeat of optimisation in optim_fun.')
                 res = np.array(res)
                 res = res.T
                 # print 'minus_log_like for repeat ' + str(count1)+ ' with LBFGSB in optim_fun is ' + str(res[1, :])
@@ -1040,26 +979,27 @@ def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withP
                     f1 = open(file, 'wb')
                     f1.close()
 
-                    print 'initial theta from LBFGSB optimisation for BFGS in optim_fun is ' + str(tmp_res['x'])
+                    print('initial theta from LBFGSB optimisation for BFGS in optim_fun is ' + str(tmp_res['x']))
                     tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                                    x0=tmp_res['x'], method='BFGS',
                                    jac=True,
                                    args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
                                    options={'maxiter': 2000, 'disp': False})
-                    print 'theta from the ' + str(count1) + ' repeat of optimisation with BFGS in optim_fun is ' + str(tmp_res['x'])
+                    print('theta from the ' + str(count1) + ' repeat of optimisation with BFGS in optim_fun is ' + str(tmp_res['x']))
                     logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
                         gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
-                    print 'grads at theta from the ' + str(count1) + ' repeat of optimisation with BFGS in optim_fun is ' + str(grads_at_resOptim)
+                    print('grads at theta from the ' + str(count1) + ' repeat of optimisation with BFGS in optim_fun is ' + str(grads_at_resOptim))
                     flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
                     # if gradients from the BFGS optimisation is zero, break out of the loop
 
                     tmp = np.diag(np.array(tmp_res['hess_inv']))
                     variance_log_covPars = tmp[:-4]
-                    if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero) and np.max(np.abs(variance_log_covPars)) < 5.0e+08:
-                        print 'BFGS optmisation converged successfully at the '+ str(count1) + ' repeat of optimisation in optim_fun.'
-                        print 'minus_log_like for repeat ' + str(count1)+ ' with BFGS in optim_fun is ' + str(tmp_res['fun'])
-                        print 'parameters after optimisation with BFGS in optim_fun :'  + \
-                        str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]])
+                    if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero) and np.max(np.abs(variance_log_covPars)) < 5.0e+04:
+                        print('BFGS optmisation converged successfully at the '+ str(count1) + ' repeat of optimisation in optim_fun.')
+                        print('minus_log_like for repeat ' + str(count1)+ ' with BFGS in optim_fun is ' + str(tmp_res['fun']))
+                        print('parameters after optimisation with BFGS in optim_fun :'  + \
+                        str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]]))
+
                  #        print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
                  # ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS in optim_fun :'  + str(np.array(tmp_res['hess_inv']))
                  #        print 'Optim status withPrior is ' + str(withPrior) + \
@@ -1080,8 +1020,9 @@ def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withP
     else:
         return [np.array(tmp_res['x']), tmp_res['fun'], np.array(tmp_res['hess_inv']), tmp_res['success'], tmp_res['message']]
 
+
 def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat, seed, numMo, round):
-    print 'Starting the ' + str(round) + ' round of optimisation'
+    print('Starting the ' + str(round) + ' round of optimisation in optim_RndStart')
     count = 0
     LBFGSB_status = False
     repeat_optim_status = False
@@ -1095,39 +1036,34 @@ def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, 
             else:
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
                 np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4)), axis=0)
-            print 'initial theta in optim_RndStart :' + str(initial_theta)
+            print('initial theta in optim_RndStart :' + str(initial_theta))
             if useGradsFlag:
-                # tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
-                #                x0=initial_theta, method=method,
-                #                jac=True, bounds = bounds,
-                #                args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
-                #                options={'maxiter': 2000, 'disp': False})
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
-                   x0=initial_theta, method='BFGS',
-                   jac=True,
-                   args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
-                   options={'maxiter': 2000, 'disp': False})
+                               x0=initial_theta, method=method,
+                               jac=True, bounds = bounds,
+                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                               options={'maxiter': 2000, 'disp': False})
             else:
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
                                x0=initial_theta, method=method,
                                jac=False, bounds = bounds,
                                args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
                                options={'maxiter': 2000, 'disp': False})
-            print 'The ' + str(count) + ' round of optimisation'
+            print('The ' + str(count) + ' repeat of optimisation in optim_RndStart')
         except:
             continue
         if tmp_res['fun'] is not None: # if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
-            print 'theta from the ' + str(count) + ' repeat of optimisation with LBFGSB is ' + str(tmp_res['x'])
+            print('theta from the ' + str(count) + ' repeat of optimisation with LBFGSB is ' + str(tmp_res['x']))
             logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
                 gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
-            print 'grads at theta from the ' + str(count) + ' repeat of optimisation with LBFGSB is ' + str(grads_at_resOptim)
-            flag_grads_equal_zero = np.round(grads_at_resOptim, 1) == 0.
+            print('grads at theta from the ' + str(count) + ' repeat of optimisation with LBFGSB is ' + str(grads_at_resOptim))
+            flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
             # if gradients from the first optimisation is zero, break out of the loop
             if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
                 LBFGSB_status = True
-                print 'LBFGSB optmisation converged successfully at the '+ str(count) + ' repeat of optimisation.'
+                print('LBFGSB optmisation converged successfully at the '+ str(count) + ' repeat of optimisation.')
         
-                print 'parameters after optimisation withPrior  with LBFGSB :'  + str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]])
+                print('parameters after optimisation withPrior  with LBFGSB :'  + str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]]))
                 # print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
                 #  ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['hess_inv'].todense()))
                 # print 'Optim status withPrior is ' + str(withPrior) + \
@@ -1143,49 +1079,49 @@ def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, 
                     f1 = open(file, 'wb')
                     f1.close()
 
-                    print 'initial theta from LBFGSB optimisation for BFGS is ' + str(tmp_res['x'])
+                    print('initial theta from LBFGSB optimisation for BFGS is ' + str(tmp_res['x']))
                     tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                                    x0=tmp_res['x'], method='BFGS',
                                    jac=True,
                                    args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
                                    options={'maxiter': 2000, 'disp': False})
-                    print 'theta from the ' + str(count) + ' repeat of optimisation with BFGS is ' + str(tmp_res['x'])
+                    print('theta from the ' + str(count) + ' repeat of optimisation with BFGS is ' + str(tmp_res['x']))
                     logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
                         gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
-                    print 'grads at theta from the ' + str(count) + ' repeat of optimisation with BFGS is ' + str(grads_at_resOptim)
-                    flag_grads_equal_zero = np.round(grads_at_resOptim, 1) == 0.
+                    print('grads at theta from the ' + str(count) + ' repeat of optimisation with BFGS is ' + str(grads_at_resOptim))
+                    flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
                     # if gradients from the BFGS optimisation is zero, break out of the loop
                     tmp = np.diag(np.array(tmp_res['hess_inv']))
                     variance_log_covPars = tmp[:-4]
-                    print 'np.max(np.abs(variance_log_covPars)) in optim_RndStart -firstPart is ' + str(np.max(np.abs(variance_log_covPars)))
-                    if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero) and np.max(np.abs(variance_log_covPars)) < 5.0e+08:
-                        print 'BFGS optmisation converged successfully at the '+ str(count) + ' round of optimisation.'
-                        print 'minus_log_like for repeat ' + str(count)+ ' with BFGS is ' + str(tmp_res['fun'])
-                        print 'parameters after optimisation with BFGS :'  + str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]])
-                        print 'covariance of pars after optimisation with BFGS :'  + str(np.array(tmp_res['hess_inv']))
-                        print 'Optim status withPrior is ' + str(withPrior) + \
-                        ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['success']))
-                        print 'Optim message withPrior with BFGS :'  + str(np.array(tmp_res['message']))
+                    print('np.max(np.abs(variance_log_covPars)) in optim_RndStart -firstPart is ' + str(np.max(np.abs(variance_log_covPars))))
+                    if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero) and np.max(np.abs(variance_log_covPars)) < 5.0e+04:
+                        print('BFGS optmisation converged successfully at the '+ str(count) + ' round of optimisation.')
+                        print('minus_log_like for repeat ' + str(count)+ ' with BFGS is ' + str(tmp_res['fun']))
+                        print('parameters after optimisation with BFGS :'  + str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]]))
+                        print('covariance of pars after optimisation with BFGS :'  + str(np.array(tmp_res['hess_inv'])))
+                        print('Optim status withPrior is ' + str(withPrior) + \
+                        ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['success'])))
+                        print('Optim message withPrior with BFGS :'  + str(np.array(tmp_res['message'])))
                         break
                     else:
                         count += 1
                         repeat_another = repeat
-                        print 'repeat is ' + str(repeat)
-                        print 'count here is ' + str(count)
+                        print('repeat is ' + str(repeat))
+                        print('count here is ' + str(count))
                         if repeat_another == max_repeat:
                             break
                         while repeat_another != max_repeat:
                             repeat_another += 1
-                            print 'repeat_another now is ' + str(repeat_another)
+                            print('repeat_another now is ' + str(repeat_another))
                             mu, log_like, cov, status, message = optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat_another,seed, numMo)
                             ogPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(mu, X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
                         gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
-                            print 'grads at theta from the repeat ' + str(repeat_another) + ' optimisation is ' + str(grads_at_resOptim)
-                            flag_grads_equal_zero = np.round(grads_at_resOptim, 1) == 0.
+                            print('grads at theta from the repeat ' + str(repeat_another) + ' optimisation is ' + str(grads_at_resOptim))
+                            flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
                             tmp = np.diag(cov)
                             variance_log_covPars = tmp[:-4]
-                            print 'np.max(np.abs(variance_log_covPars)) in optim_RndStart -secondPart is ' + str(np.max(np.abs(variance_log_covPars)))
-                            if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero) and np.max(np.abs(variance_log_covPars)) < 5.0e+08:
+                            print('np.max(np.abs(variance_log_covPars)) in optim_RndStart -secondPart is ' + str(np.max(np.abs(variance_log_covPars))))
+                            if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero) and np.max(np.abs(variance_log_covPars)) < 5.0e+04:
                                 repeat_optim_status = True
                                 break
                 else:    
@@ -1193,79 +1129,77 @@ def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, 
         else:# if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
             continue 
     if LBFGSB_status:
-        return [np.array(tmp_res['x']), tmp_res['fun'], np.array(tmp_res['hess_inv']), tmp_res['success'], tmp_res['message']]
+        return [np.array(tmp_res['x']), tmp_res['fun'], np.array(tmp_res['hess_inv'].todense()), tmp_res['success'], tmp_res['message']]
     elif repeat_optim_status:
         return [mu, log_like, cov, status, message]
     else:
         return [np.array(tmp_res['x']), tmp_res['fun'], np.array(tmp_res['hess_inv']), tmp_res['success'], tmp_res['message']]
 
 def optim_NotRndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat, seed, numMo, round=1):
-    print 'Starting the ' + str(round) + ' round of optimisation'
+    print('Starting the ' + str(round) + ' round of optimisation in optim_NotRndStart')
     count = 0
     max_repeat = 4
-    # input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_328_numMo_' + str(numMo - 50) + '/seed' + str(seed) + '/'
-    input_folder = os.getcwd() + '/dataSimulated/numObs_200_numMo_' + str(numMo - 50) + '/seed' + str(seed) + '/'
-    # resOptim_in = open(input_folder + 'resOptim.pkl', 'rb')
-    resOptim_in = open(input_folder + 'resOptimSim.pkl', 'rb')
+    input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo - 50) + '/seed' + str(seed) + '/'
+    resOptim_in = open(input_folder + 'resOptim.pkl', 'rb')
     resOptim = pickle.load(resOptim_in)
     initial_theta = resOptim['mu']
-    print 'initial theta from previous optimisation  for BFGS is ' + str(initial_theta)
+    print('initial theta from previous optimisation  for BFGS is ' + str(initial_theta))
     tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                    x0=initial_theta, method='BFGS',
                    jac=True,
                    args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
                    options={'maxiter': 2000, 'disp': False})
-    print 'theta from optimisation with BFGS when numMo is ' + str(numMo) + ' is ' + str(tmp_res['x'])
+    print('theta from optimisation with BFGS when numMo is ' + str(numMo) + ' is ' + str(tmp_res['x']))
     logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
         gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
-    print 'grads at theta from optimisation with BFGS when numMo is ' + str(numMo) + ' is ' + str(grads_at_resOptim)
+    print('grads at theta from optimisation with BFGS when numMo is ' + str(numMo) + ' is ' + str(grads_at_resOptim))
     flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
     # if gradients from the BFGS optimisation is zero, break out of the loop
     tmp = np.diag(np.array(tmp_res['hess_inv']))
     variance_log_covPars = tmp[:-4]
-    print 'np.max(np.abs(variance_log_covPars)) in optim_NotRndStart - firstPart is ' + str(np.max(np.abs(variance_log_covPars)))
-    if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero) and np.max(np.abs(variance_log_covPars)) < 5.0e+08:
-        print 'BFGS optmisation converged successfully when numMo is ' + str(numMo)
-        print 'minus_log_like with BFGS is when numMo is ' + str(numMo) + ' is ' + str(tmp_res['fun'])
-        print 'parameters after optimisation withPrior is ' + str(withPrior) + \
+    print('np.max(np.abs(variance_log_covPars)) in optim_NotRndStart - firstPart is ' + str(np.max(np.abs(variance_log_covPars))))
+    if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero) and np.max(np.abs(variance_log_covPars)) < 5.0e+04:
+        print('BFGS optmisation converged successfully when numMo is ' + str(numMo))
+        print('minus_log_like with BFGS is when numMo is ' + str(numMo) + ' is ' + str(tmp_res['fun']))
+        print('parameters after optimisation withPrior is ' + str(withPrior) + \
         ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + \
-        str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]])
-        print 'covariance of pars after optimisation with BFGS :'  + str(np.array(tmp_res['hess_inv']))
-        print 'Optim status with BFGS :'  + str(np.array(tmp_res['success']))
-        print 'Optim message with BFGS :'  + str(np.array(tmp_res['message']))
+        str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]]))
+        print('covariance of pars after optimisation with BFGS :'  + str(np.array(tmp_res['hess_inv'])))
+        print('Optim status with BFGS :'  + str(np.array(tmp_res['success'])))
+        print('Optim message with BFGS :'  + str(np.array(tmp_res['message'])))
         return [np.array(tmp_res['x']), tmp_res['fun'], np.array(tmp_res['hess_inv']), tmp_res['success'], tmp_res['message']]
     else:
         file = 'logs/fail_BFGSOptim_Seed' + str(seed) + 'numMo' + str(numMo) 
         f1 = open(file, 'wb')
         f1.close()
         repeat_another = repeat
-        print 'repeat is ' + str(repeat)
-        print 'count here is ' + str(count)
+        print('repeat is ' + str(repeat))
+        print('count here is ' + str(count))
         while repeat_another != max_repeat:
             repeat_another += 1
-            print 'repeat_another now is ' + str(repeat_another)
+            print('repeat_another now is ' + str(repeat_another))
             mu, log_like, cov, status, message = optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat_another,seed, numMo)
             ogPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(mu, X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
         gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
-            print 'grads at theta from the repeat ' + str(repeat_another) + ' optimisation is ' + str(grads_at_resOptim)
+            print('grads at theta from the repeat ' + str(repeat_another) + ' optimisation is ' + str(grads_at_resOptim))
             flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
             tmp = np.diag(cov)
             variance_log_covPars = tmp[:-4]
-            print 'np.max(np.abs(variance_log_covPars)) in optim_NotRndStart - secondPart is ' + str(np.max(np.abs(variance_log_covPars)))
-            if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero) and np.max(np.abs(variance_log_covPars)) < 5.0e+08:
+            print('np.max(np.abs(variance_log_covPars)) in optim_NotRndStart - secondPart is ' + str(np.max(np.abs(variance_log_covPars))))
+            if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero) and np.max(np.abs(variance_log_covPars)) < 5.0e+04:
                 break
         return [mu, log_like, cov, status, message]
 
 def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, useGradsFlag = False, repeat=3, seed =188, numMo =50, rounds =1, method='L-BFGS-B', rbf=True, OMEGA = 1e-6, \
     bounds = ((-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-50, 50), (-50, 50), (-50, 50), (-50, 50))): 
-    print 'starting optimising when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
-         '& useGradsFlag is ' + str(useGradsFlag) 
+    print('starting optimising when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
+         '& useGradsFlag is ' + str(useGradsFlag)) 
     if rbf:
         num_par=1
     else:
         num_par=X_hatZs.shape[1]  
     res = []
-    if numMo == 300:
+    if numMo == 50:
         # rounds =2
         for round in range(rounds):
             res_tmp = optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat,seed, numMo, round)
@@ -1273,13 +1207,13 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
             res.append(res_tmp)
         res = np.array(res)
         res = res.T
-        print 'minus_log_like for ' + str(rounds) + ' rounds is ' + str(res[1, :])
+        print('minus_log_like for ' + str(rounds) + ' rounds is ' + str(res[1, :]))
         i = np.argmin(res[1,:])
-        print 'log_cov_parameters plus model bias after optimisation  is :'  + str(np.array(res[0, :][i]))
-        print 'parameters after optimisation withPrior is  :'  + str([np.exp(np.array(res[0, :][i])[:-4]), np.array(res[0, :][i])[-4:]])
-        print 'covariance of pars after optimisation  :'  + str(np.array(res[2, :][i]))
-        print 'Optim status  :'  + str(np.array(res[3, :][i]))
-        print 'Optim message :'  + str(np.array(res[4, :][i]))
+        print('log_cov_parameters plus model bias after optimisation  is :'  + str(np.array(res[0, :][i])))
+        print('parameters after optimisation withPrior is  :'  + str([np.exp(np.array(res[0, :][i])[:-4]), np.array(res[0, :][i])[-4:]]))
+        print('covariance of pars after optimisation  :'  + str(np.array(res[2, :][i])))
+        print('Optim status  :'  + str(np.array(res[3, :][i])))
+        print('Optim message :'  + str(np.array(res[4, :][i])))
         return [np.array(res[0, :][i]), np.array(res[2, :][i])]
     else:
         for round in range(rounds):
@@ -1293,598 +1227,15 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
                 res.append(res_tmp)
         res = np.array(res)
         res = res.T
-        print 'minus_log_like for ' + str(rounds) + ' rounds is ' + str(res[1, :])
+        print('minus_log_like for ' + str(rounds) + ' rounds is ' + str(res[1, :]))
         i = np.argmin(res[1,:])
-        print 'log_cov_parameters plus model bias after optimisation  is :'  + str(np.array(res[0, :][i]))
-        print 'parameters after optimisation withPrior is  :'  + str([np.exp(np.array(res[0, :][i])[:-4]), np.array(res[0, :][i])[-4:]])
-        print 'covariance of pars after optimisation  :'  + str(np.array(res[2, :][i]))
-        print 'Optim status  :'  + str(np.array(res[3, :][i]))
-        print 'Optim message :'  + str(np.array(res[4, :][i]))
+        print('log_cov_parameters plus model bias after optimisation  is :'  + str(np.array(res[0, :][i])))
+        print('parameters after optimisation withPrior is  :'  + str([np.exp(np.array(res[0, :][i])[:-4]), np.array(res[0, :][i])[-4:]]))
+        print('covariance of pars after optimisation  :'  + str(np.array(res[2, :][i])))
+        print('Optim status  :'  + str(np.array(res[3, :][i])))
+        print('Optim message :'  + str(np.array(res[4, :][i])))
         return [np.array(res[0, :][i]), np.array(res[2, :][i])]
       
-class MH_estimator():
-    def __init__(self, X_hatZs, y_hatZs, X_tildZs, y_tildZs):
-        self.X_hatZs = X_hatZs
-        self.y_hatZs = y_hatZs
-        self.X_tildZs = X_tildZs
-        self.y_tildZs = y_tildZs
-    
-    def burningin(self, mu, cov, nburnin=2000,  nbatch=100, OMEGA = 1e-6):
-        log_like = log_obsZs_giv_par(mu, self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs)
-        num_iter = nburnin / nbatch
-        tmp_mu = mu[:]
-        iter_index = None
-
-        for i in range(num_iter):
-            accept_count = 0
-            l_cov = np.linalg.cholesky(cov)
-            for j in range(nbatch):
-                mu_p = np.dot(l_cov, np.random.normal(size=[len(mu), 1])).reshape(len(mu)) + tmp_mu
-                if np.max(np.abs(mu_p)) > 20:
-                    diff_log_like = - np.inf
-                else:
-                    log_like_p = log_obsZs_giv_par(mu_p, self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs)
-                    diff_log_like = log_like_p - log_like
-                if np.log(np.random.uniform(0, 1)) < diff_log_like:
-                    tmp_mu = mu_p
-                    log_like = log_like_p
-                    accept_count += 1
-            accept_rate = (float)(accept_count) / (float)(nbatch)
-            print 'Acc_Rate for the ' + str(i) + ' iteration is ' + str(accept_rate)
-
-            if accept_rate >= 0.20 and accept_rate <= 0.36:
-                iter_index = i
-                break
-            if accept_rate < 0.20:
-                cov *= 0.8
-            if accept_rate > 0.36:
-                cov /= 0.8
-        return iter_index, cov, tmp_mu
-
-    def sampler(self, cov, mu, size=1000, OMEGA = 1e-6):
-        print 'starting sampling'
-        sample = np.zeros([len(mu), size])
-        acc_count = 0
-        l_cov = np.linalg.cholesky(cov)
-        log_like = log_obsZs_giv_par(mu, self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs)
-        for i in range(size):
-            mu_p = np.dot(l_cov, np.random.normal(size=[len(mu), 1])).reshape(len(mu)) + mu
-            if np.max(np.abs(mu_p)) > 20:
-                diff_log_like = - np.inf
-            else:
-                log_like_p = log_obsZs_giv_par(mu_p, self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs)
-                diff_log_like = log_like_p - log_like
-            if np.log(np.random.uniform(0, 1)) < diff_log_like:
-                mu = mu_p
-                log_like = log_like_p
-                acc_count += 1
-            sample[:,i] = mu.reshape(len(mu))
-            if (i+1) % 100 ==0:
-                sample_out = open('sample_par_size' + str(size) + '.pickle', 'wb')
-                pickle.dump(sample[:, :i+1], sample_out)
-                sample_out.close()
-
-        acc_rate = (float)(acc_count) / size
-        print 'Acc_Rate:' + str(acc_rate)
-        return sample
-
-    def estimate(self, size = 100, proposal = 'identity', useOptim = False, rbf = True):
-        if useOptim:
-            while True:
-                try:
-                    mu, hess_inv= optimise(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, withPrior, \
-                        gpdtsMo=False, useGradsFlag = False, repeat=3, method='BFGS', rbf=True, OMEGA = 1e-6)
-                    print 'diag of the hess_inv is ' + str(np.diag(hess_inv))
-                    # while np.diag(hess_inv)[0] < 1e-4:
-                    #     mu, hess_inv= optimize(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, repeat=1, method='BFGS', rbf=True, OMEGA = 1e-6)
-                    break
-                except:
-                    continue
-            # print 'exp_mu_optim :' + str(np.exp(mu))
-            if proposal == 'identity':
-                cov =  np.identity(len(mu))            
-            if proposal == 'fullApproxCov':
-                cov = hess_inv
-            if proposal == 'diagOfApproxCov':
-                cov = np.diag(np.diag(hess_inv))
-        else:
-            if rbf:
-                num_par=1
-            else:
-                num_par=self.X_hatZs.shape[1]
-            mu = np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), np.log(np.random.gamma(1.2, 1./0.6, 1)), np.random.normal(0., 1., 1)), axis=0)
-            cov = np.identity(len(mu))
-
-        iter = None
-        nburnin = 2000
-        while iter is None:
-            iter, cov, mu = self.burningin(mu, cov, nburnin=nburnin)
-            nburnin += 2000
-
-        print 'log_parameters  plus mulplicative_bias after burningin is :'  + str(mu)
-        print 'parameters after burningin is :'  + str([np.exp(mu[:-1]), mu[-1]])
-        print 'cov of pars after burningin is :'  + str(cov)
-
-        # cov = hess_inv
-
-        sample = self.sampler(cov, mu, size = size)
-        sample[:-1, :] = np.exp(sample[:-1, :])
-
-        sample_mod = stats.mode(sample, axis =1)
-        sample_mean = np.mean(sample, axis=1)
-        sample_std = np.std(sample, axis = 1)
-        assert len(sample) == len(mu)
-        return [sample_mod, sample_mean, sample_std]
-
-class Gibbs_sampler():
-    def __init__(self, X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_hatZs):
-        self.X_hatZs = X_hatZs
-        self.y_hatZs = y_hatZs
-        self.X_tildZs = X_tildZs
-        self.y_tildZs = y_tildZs
-        self.areal_hatZs = areal_hatZs
-
-    def initial_model_bias(self):
-        tmp0 = [np.mean(self.X_tildZs[i], axis =0) for i in range(len(self.X_tildZs))]
-        tmp0 = np.array(tmp0)
-        tmp1 = [np.mean(self.areal_hatZs[i]) for i in range(len(self.areal_hatZs))]
-        tmp1= np.array(tmp1).reshape(len(tmp1), 1)
-        X = np.hstack((tmp1, tmp0))
-        regr = linear_model.LinearRegression()
-        regr.fit(X, self.y_tildZs)
-        coefficients = regr.coef_
-        intercept = regr.intercept_
-        model_bias_coefficients = np.concatenate((coefficients, [intercept]))
-        return model_bias_coefficients
-    # try to fix the model bias parameters to the ones obtained from linear regression, to check how intialisation can affect the optimisation
-    def optim(self, withPrior, modelBias, onlyOptimCovPar = False, gpdtsMo=False, useGradsFlag = False, repeat=3, seed =188, method='BFGS', rbf=True, OMEGA = 1e-6): 
-        print 'starting optimising when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
-        ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) 
-        if rbf:
-            num_par=1
-        else:
-            num_par=self.X_hatZs.shape[1]  
-        res = []
-        count = 0
-        if onlyOptimCovPar:
-            while count != repeat:
-                try:
-                    if gpdtsMo:
-                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), \
-                        np.log(np.random.gamma(1., np.sqrt(num_par), num_par))), axis=0)
-                    else:
-                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1))), axis=0)
-                    print 'initial theta when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
-                    ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :' + str(initial_theta)
-                    tmp_res = minimize(fun=minus_log_obsZs_giv_par_of_cov, 
-                                   x0=initial_theta, method=method,
-                                   jac=False,
-                                   args=(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, withPrior, modelBias, gpdtsMo),
-                                   options={'maxiter': 100, 'disp': False})
-                    print 'The ' + str(count + 1) + ' round of optimisation'
-                except:
-                    continue
-                if tmp_res['fun'] is not None:
-                    count += 1
-                    temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
-                    np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
-                    res.append(temp_res)
-                else:
-                    continue      
-            res = np.array(res)
-            res = res.T
-            print 'minus_log_like for repeat ' + str(repeat) + ' is ' + str(res[1, :])
-            i = np.argmin(res[1,:])
-            print 'log_cov_parameters after optimisation withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :'  + str(np.array(res[0, :][i]))
-            print 'cov_parameters after optimisation withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :'  + str(np.exp(np.array(res[0, :][i])))
-            print 'cov after optimisation withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :'  + str(np.array(res[2, :][i]))
-        else:
-            while count != repeat:
-                try:
-                    if gpdtsMo:
-                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), \
-                        np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), modelBias), axis=0)
-                    else:
-                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), modelBias), axis=0)
-                    print 'initial theta when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) +  \
-                    '& useGradsFlag is ' + str(useGradsFlag) + ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :' + str(initial_theta)
-                    if useGradsFlag:
-                        tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
-                                       x0=initial_theta, method=method,
-                                       jac=True,
-                                       args=(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, gpdtsMo, withPrior),
-                                       options={'maxiter': 100, 'disp': False})
-                    else:
-                        tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
-                                       x0=initial_theta, method=method,
-                                       jac=False,
-                                       args=(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, gpdtsMo, withPrior),
-                                       options={'maxiter': 100, 'disp': False})
-                    print 'The ' + str(count + 1) + ' round of optimisation'
-                except:
-                    continue
-                if tmp_res['fun'] is not None:
-                    if tmp_res['fun']<0:
-                        temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
-                        np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
-                        res.append(temp_res)
-                        file = 'logs/seed' + str(seed)+ 'successAtrep' + str(count)
-                        f0 = open(file, 'wb')
-                        f0.close()
-
-                        break
-                    else:
-                        count += 1
-                        temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
-                        np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
-                        res.append(temp_res)
-                else:
-                    continue      
-            res = np.array(res)
-            res = res.T
-            print 'minus_log_like for repeat ' + str(repeat) + ' is ' + str(res[1, :])
-            i = np.argmin(res[1,:])
-            if np.array(res[1, :][i]) >0:
-                file = 'logs/unsuccessAll' + str(repeat)+ 'repSeed' + str(seed)
-                f1 = open(file, 'wb')
-                f1.close()
-         
-            print 'log_cov_parameters plus model bias after optimisation withPrior is ' + str(withPrior) + \
-             ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[0, :][i]))
-            print 'parameters after optimisation withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + \
-            str([np.exp(np.array(res[0, :][i])[:-4]), np.array(res[0, :][i])[-4:]])
-            print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[2, :][i]))
-            print 'Optim status withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[3, :][i]))
-            print 'Optim message withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[4, :][i]))
-            print 'Optim nit withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[5, :][i]))
-
-            #check wheter the gradients at theta from optimisation are close to zeros (wchich indicates the convergence of the optimisation)
-            _, grads_at_resOptim = log_obsZs_giv_par_with_grad(np.array(res[0, :][i]), self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs,\
-             gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
-            print 'grads at theta from optimisation is ' + str(grads_at_resOptim)
-            flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
-            if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
-                print 'BFGS optmisation converged successfully.'
-            else:
-                print 'BFGS optmisation NOT converged.'
-             
-        return [np.array(res[0, :][i]), np.array(res[2, :][i])]
-
-    def sampler(self, withPrior = False, onlyOptimCovPar = False, gpdtsMo=False, useGradsFlag = False, repeat = 3, seed=188):
-
-        model_bias = self.initial_model_bias() 
-        print 'model bias from linear regression is :' + str(model_bias)
-     
-        mu, cov = self.optim(withPrior, model_bias, onlyOptimCovPar, gpdtsMo, useGradsFlag,repeat, seed)
-        return [mu, cov] 
-
-class HMC_estimator():
-    def __init__(self, X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs):
-        self.X_hatZs = X_hatZs
-        self.y_hatZs = y_hatZs
-        self.X_tildZs = X_tildZs
-        self.y_tildZs = y_tildZs
-        self.areal_tildZs = areal_tildZs
-
-    def initial_model_bias(self):
-        tmp0 = [np.mean(self.X_tildZs[i], axis =0) for i in range(len(self.X_tildZs))]
-        tmp0 = np.array(tmp0)
-        tmp1 = [np.mean(self.areal_tildZs[i]) for i in range(len(self.areal_tildZs))]
-        tmp1= np.array(tmp1).reshape(len(tmp1), 1)
-        X = np.hstack((tmp1, tmp0))
-        regr = linear_model.LinearRegression()
-        regr.fit(X, self.y_tildZs)
-        coefficients = regr.coef_
-        intercept = regr.intercept_
-        model_bias_coefficients = np.concatenate((coefficients, [intercept]))
-        return model_bias_coefficients
-
-    def burningin(self, mu, cov, massMatrix, epsilon0=0.1, minL=1, maxL=10, nburnin=2000,  nbatch=100, OMEGA = 1e-6):
-        tmp_mu = mu[:]
-        # random initial position centered on the mode obtained from optimisation
-        current_position = tmp_mu + np.dot(np.linalg.cholesky(cov), np.random.normal(size=[len(mu), 1])).reshape(len(mu))
-        log_like_current_pos, grad_current_pos = gpGaussianLikeFuns.log_py_giv_par_with_grad(current_position, self.X, self.y)
-        l_chol_M = np.linalg.cholesky(massMatrix)
-
-        num_iter = nburnin / nbatch
-        iter_index = None
-
-        for i in range(num_iter):
-            accept_count = 0            
-            for j in range(nbatch):
-                current_momentum = np.dot(l_chol_M, np.random.normal(size=[len(mu), 1])).reshape(len(mu))
-                tmp0 =  linalg.solve_triangular(l_chol_M, current_momentum, lower=True)
-                current_kinetic = 0.5 * np.inner(tmp0,tmp0)
-
-                proposed_momentum= current_momentum
-                proposed_position = current_position
-                grad_proposed_pos = grad_current_pos
-
-                premature_reject = 0      
-                L = np.random.randint(minL,maxL,1)
-
-                for k in range(L):
-                    epsilon = np.random.exponential(epsilon0) #Randomization of the stepsize
-                    p_half= proposed_momentum + epsilon/2. * grad_proposed_pos
-
-                    if (np.isinf(p_half) + np.isnan(p_half)).any():
-                        premature_reject = 1
-                        break
-                    proposed_position = proposed_position + epsilon * linalg.solve_triangular(l_chol_M.T, linalg.solve_triangular(l_chol_M, p_half, lower=True))
-                
-                    if np.max(np.abs(proposed_position)) > 20:
-                        premature_reject =1 
-                        break
-
-                    log_like_proposed_pos, grad_proposed_pos = gpGaussianLikeFuns.log_py_giv_par_with_grad(proposed_position, self.X, self.y)
-
-                    proposed_momentum = p_half + epsilon/2. * grad_current_pos
-                    if (np.isinf(proposed_momentum) + np.isnan(proposed_momentum)).any():
-                        premature_reject =1
-                        break
-                    tmp1 = linalg.solve_triangular(l_chol_M, proposed_momentum, lower=True)
-                    proposed_kinetic = 0.5 * np.inner(tmp1,tmp1)
-
-                if premature_reject==1:
-                    A = -np.inf
-                if premature_reject==0:
-                    A = np.min([0, log_like_proposed_pos - log_like_current_pos - proposed_kinetic + current_kinetic])
-                if np.isnan(A):
-                    A = - np.inf
-
-                if -np.random.exponential(1) < A:
-                    current_position = proposed_position
-                    grad_current_pos = grad_proposed_pos
-                    log_like_current_pos = log_like_proposed_pos
-                    accept_count += 1
-
-            accept_rate = (float)(accept_count) / (float)(nbatch)
-
-            #minAcc= 0.56, maxAcc=0.75, tune_cof = 0.8
-            minAcc= 0.2
-            maxAcc=0.35
-            tune_cof = 0.7
-
-            if accept_rate >= minAcc and accept_rate <= maxAcc:
-                iter_index = i
-                print 'tuning accept rate is :' + str(accept_rate)
-                break
-            if accept_rate < minAcc:
-                epsilon0 *= tune_cof
-            if accept_rate > maxAcc:
-                epsilon0 /= tune_cof
-        return iter_index, epsilon0, current_position, grad_current_pos,log_like_current_pos
-
-    def optim(self, withPrior, modelBias, onlyOptimCovPar = False, gpdtsMo=False, repeat=5, method='BFGS', rbf=True, OMEGA = 1e-6): 
-        print 'starting optimising when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
-        ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) 
-        if rbf:
-            num_par=1
-        else:
-            num_par=self.X_hatZs.shape[1]  
-        res = []
-        count = 0
-        if onlyOptimCovPar:
-            while count != repeat:
-                try:
-                    if gpdtsMo:
-                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), \
-                        np.log(np.random.gamma(1., np.sqrt(num_par), num_par))), axis=0)
-                    else:
-                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1))), axis=0)
-                    print 'initial theta when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
-                    ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :' + str(initial_theta)
-                    tmp_res = minimize(fun=minus_log_obsZs_giv_par_of_cov, 
-                                   x0=initial_theta, method=method,
-                                   jac=False,
-                                   args=(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, withPrior, modelBias, gpdtsMo),
-                                   options={'maxiter': 100, 'disp': False})
-                    print 'The ' + str(count + 1) + ' round of optimisation'
-                except:
-                    continue
-                if tmp_res['fun'] is not None:
-                    count += 1
-                    temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv'])]
-                    res.append(temp_res)
-                else:
-                    continue      
-            res = np.array(res)
-            res = res.T
-            print 'minus_log_like for repeat ' + str(repeat) + ' is ' + str(res[1, :])
-            i = np.argmin(res[1,:])
-            print 'log_cov_parameters after optimisation withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :'  + str(np.array(res[0, :][i]))
-            print 'cov_parameters after optimisation withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :'  + str(np.exp(np.array(res[0, :][i])))
-            print 'cov after optimisation withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :'  + str(np.array(res[2, :][i]))
-        else:
-            while count != repeat:
-                try:
-                    if gpdtsMo:
-                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), \
-                        np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), modelBias), axis=0)
-                    else:
-                        initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                        np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), modelBias), axis=0)
-                    print 'initial theta when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) +  \
-                    '& useGradsFlag is ' + str(useGradsFlag) + ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' :' + str(initial_theta)
-                    if useGradsFlag:
-                        tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
-                                       x0=initial_theta, method=method,
-                                       jac=True,
-                                       args=(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, gpdtsMo, withPrior),
-                                       options={'maxiter': 200, 'disp': False})
-                    else:
-                        tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
-                                       x0=initial_theta, method=method,
-                                       jac=False,
-                                       args=(self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, gpdtsMo, withPrior),
-                                       options={'maxiter': 200, 'disp': False})
-                    print 'The ' + str(count + 1) + ' round of optimisation'
-                except:
-                    continue
-                if tmp_res['fun'] is not None:
-                    if tmp_res['fun']<0:
-                        temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
-                        np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
-                        res.append(temp_res)
-                        break
-                    else:
-                        count += 1
-                        temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
-                        np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
-                        res.append(temp_res)
-                else:
-                    continue      
-            res = np.array(res)
-            res = res.T
-            print 'minus_log_like for repeat ' + str(repeat) + ' is ' + str(res[1, :])
-            i = np.argmin(res[1,:])
-         
-            print 'log_cov_parameters plus model bias after optimisation withPrior is ' + str(withPrior) + \
-             ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[0, :][i]))
-            print 'parameters after optimisation withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + \
-            str([np.exp(np.array(res[0, :][i])[:-4]), np.array(res[0, :][i])[-4:]])
-            print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[2, :][i]))
-            print 'Optim status withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[3, :][i]))
-            print 'Optim message withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[4, :][i]))
-            print 'Optim nit withPrior is ' + str(withPrior) + \
-            ' & onlyOptimCovPar is ' + str(onlyOptimCovPar) + ' & gpdtsMo is ' + str(gpdtsMo) + ' :'  + str(np.array(res[5, :][i]))
-          
-        return [np.array(res[0, :][i]), np.array(res[2, :][i])]
-
-    def sampler(self, massMatrix, epsilon0, current_position, grad_current_pos, log_like_current_pos, gpdtsMo, size=1000, minL=1, maxL=3 , OMEGA = 1e-6):
-        sample = np.zeros([len(current_position), size])
-        acc_count = 0
-        l_chol_M = np.linalg.cholesky(massMatrix)
-
-        for i in range(size):
-            current_momentum = np.dot(l_chol_M, np.random.normal(size=[len(current_position), 1])).reshape(len(current_position))
-            tmp0 =  linalg.solve_triangular(l_chol_M, current_momentum, lower=True)
-            current_kinetic = 0.5 * np.inner(tmp0,tmp0)
-
-            proposed_momentum= current_momentum
-            proposed_position = current_position
-            grad_proposed_pos = grad_current_pos
-
-            premature_reject = 0      
-            L = np.random.randint(minL,maxL,1)
-
-            for k in range(L):
-                epsilon = np.random.exponential(epsilon0) #Randomization of the stepsize
-                p_half= proposed_momentum + epsilon/2. * grad_proposed_pos
-
-                if (np.isinf(p_half) + np.isnan(p_half)).any():
-                    premature_reject = 1
-                    break
-                proposed_position = proposed_position + epsilon * linalg.solve_triangular(l_chol_M.T, linalg.solve_triangular(l_chol_M, p_half, lower=True))
-            
-                if np.max(np.abs(proposed_position)) > 20:
-                    premature_reject =1 
-                    break
-
-                log_like_proposed_pos = log_obsZs_giv_par(proposed_position, self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, gpdtsMo)
-                grad_proposed_pos = gradsApprox(proposed_position, self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, gpdtsMo)
-
-                proposed_momentum = p_half + epsilon/2. * grad_proposed_pos             
-                if (np.isinf(proposed_momentum) + np.isnan(proposed_momentum)).any():
-                    premature_reject =1
-                    break
-
-                tmp1 = linalg.solve_triangular(l_chol_M, proposed_momentum, lower=True)
-                proposed_kinetic = 0.5 * np.inner(tmp1,tmp1)
-
-            if premature_reject==1:
-                A = -np.inf
-            if premature_reject==0:
-                A = np.min([0, log_like_proposed_pos - log_like_current_pos - proposed_kinetic + current_kinetic])
-            if np.isnan(A):
-                A = - np.inf
-
-            if -np.random.exponential(1) < A:
-                current_position = proposed_position
-                grad_current_pos = grad_proposed_pos
-                log_like_current_pos = log_like_proposed_pos
-                acc_count += 1
-            sample[:,i] = current_position.reshape(len(current_position))
-        acc_rate = (float)(acc_count) / size
-        print 'Acc_Rate:' + str(acc_rate)
-        return sample
-    def estimate(self, gpdtsMo=True, useGradsFlag = False, withPrior = False, onlyOptimCovPar = False, repeat = 2, massMat='identity', burninginFlag = False, rbf=True, size = 200):
-        modelBias = self.initial_model_bias() 
-        print 'model bias from linear regression is :' + str(modelBias)
-
-        if rbf:
-                num_par=1
-        else:
-            num_par=self.X_hatZs.shape[1] 
-        if gpdtsMo:
-            initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-            np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), \
-            np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), modelBias), axis=0)
-        else:
-            initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-            np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), modelBias), axis=0)
-
-        if massMat == 'identity':
-            massMatrix= np.identity(len(initial_theta))
-        else:
-            print 'starting optimizing' 
-            mu, cov = self.optim(withPrior, modelBias, onlyOptimCovPar, gpdtsMo, useGradsFlag,repeat)
-            l_chol_hess_inv = np.linalg.cholesky(hess_inv)
-            minusHessian = linalg.solve_triangular(l_chol_hess_inv.T, linalg.solve_triangular(l_chol_hess_inv, np.eye(len(mu)), lower=True))
-            if massMat == 'minusHessian':
-                massMatrix = minusHessian
-            if massMat == 'diagOfMinusHessian':
-                massMatrix = np.diag(np.diag(minusHessian))
-
-        if burninginFlag:
-            print 'starting burninging'
-            iter = None
-            nburnin = 2000
-            mu = initial_theta
-            hess_inv = np.identity(len(initial_theta))
-            while iter is None:
-                iter, epsilon0, current_position, grad_current_pos,log_like_current_pos = self.burningin(mu, hess_inv, massMatrix, epsilon0=0.1, minL=1, maxL=10, nburnin=nburnin,  nbatch=100, OMEGA = 1e-6)
-                nburnin += 2000
-            print 'tuned step size is :'  + str(epsilon0)
-        else:
-            epsilon0=0.1
-            
-        # random initial position centered on the mode obtained from optimisation
-        current_position = initial_theta
-        log_like_current_pos = log_obsZs_giv_par(current_position, self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, gpdtsMo)
-        grad_current_pos = gradsApprox(current_position, self.X_hatZs, self.y_hatZs, self.X_tildZs, self.y_tildZs, gpdtsMo)
-
-        l_chol_M = np.linalg.cholesky(massMatrix)
-
-        print 'starting sampling'
-
-        size = 5
-        sample = self.sampler(massMatrix, epsilon0, current_position, grad_current_pos,log_like_current_pos, gpdtsMo, size)
-        sample = np.mean(sample, axis=1)
-        assert len(sample) == len(current_position)
-        return sample
 
 def read_Sim_Data():
     #read the samples of hatZs
@@ -1904,7 +1255,7 @@ def read_Sim_Data():
     return[X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs]
 
 def check_grads():
-    input_folder = 'Data/FPstart2016020612_FR_numObs_' + str(328) + '_numMo_' + str(50) \
+    input_folder = 'Data/FPstart2016020612_FR_numObs_' + str(128) + '_numMo_' + str(50) \
     + '/seed' + str(120) + '/'
     X_hatZs_in = open(input_folder + 'X_hatZs.pkl', 'rb')
     X_hatZs = pickle.load(X_hatZs_in) 
@@ -1924,16 +1275,16 @@ def check_grads():
     initial_theta=np.concatenate((np.array([np.log(1.5), np.log(0.1), np.log(0.1), np.log(1.0),np.log(0.2)]),modelBias), axis=0)
     _, grads_computed = log_obsZs_giv_par_with_grad(initial_theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs,gp_deltas_modelOut = True)
     grads_approx = gradsApprox(initial_theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs,  withPrior= False, gp_deltas_modelOut = True)
-    print 'Computed grads are ' + str(grads_computed)
-    print 'approximated grads are ' + str(grads_approx)
+    print('Computed grads are ' + str(grads_computed))
+    print('approximated grads are ' + str(grads_approx))
     numerator = np.linalg.norm(grads_approx- grads_computed)                                
     denominator = np.linalg.norm(grads_approx)+np.linalg.norm(grads_computed)               
     difference = numerator/denominator                                          
 
     if difference > 1e-4:
-        print ("\033[93m" + "There is a mistake in computing the gradients! difference = " + str(difference) + "\033[0m")
+        print(("\033[93m" + "There is a mistake in computing the gradients! difference = " + str(difference) + "\033[0m"))
     else:
-        print ("\033[92m" + "Computing the gradients works perfectly fine! difference = " + str(difference) + "\033[0m")
+        print(("\033[92m" + "Computing the gradients works perfectly fine! difference = " + str(difference) + "\033[0m"))
     
     return difference     
     
@@ -1942,7 +1293,7 @@ if __name__ == '__main__':
     # check_grads()
     # exit(-1)
     p = argparse.ArgumentParser()
-    p.add_argument('-SEED', type=int, dest='SEED', default=200, help='The simulation index')
+    p.add_argument('-SEED', type=int, dest='SEED', default=120, help='The simulation index')
     p.add_argument('-repeat', type=int, dest='repeat', default=1, help='number of repeats in optimisation')
     p.add_argument('-o', type=str, dest='output', default=None, help='Output folder')
     p.add_argument('-withPrior', dest='withPrior', default=False,  type=lambda x: (str(x).lower() == 'true'), help='flag for ML or MAP')
@@ -1951,15 +1302,15 @@ if __name__ == '__main__':
     p.add_argument('-onlyOptimCovPar', dest='onlyOptimCovPar', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for only optimising the cov parameters with fixed model bias from linear regression')
     p.add_argument('-poly_deg', type=int, dest='poly_deg', default=2, help='degree of the polynomial function of the additive model bias')
-    p.add_argument('-lsZs', type=float, dest='lsZs', default=0.8, help='lengthscale of the GP covariance for Zs')
-    p.add_argument('-lsdtsMo', type=float, dest='lsdtsMo', default=0.2, help='lengthscale of the GP covariance for deltas of model output')
-    p.add_argument('-sigZs', type=float, dest='sigZs', default=1.0, help='sigma (marginal variance) of the GP covariance for Zs')
-    p.add_argument('-sigdtsMo', type=float, dest='sigdtsMo', default=0.5, help='sigma (marginal variance) of the GP covariance for deltas of model output')
+    p.add_argument('-lsZs', type=float, dest='lsZs', default=0.1, help='lengthscale of the GP covariance for Zs')
+    p.add_argument('-lsdtsMo', type=float, dest='lsdtsMo', default=0.6, help='lengthscale of the GP covariance for deltas of model output')
+    p.add_argument('-sigZs', type=float, dest='sigZs', default=1.5, help='sigma (marginal variance) of the GP covariance for Zs')
+    p.add_argument('-sigdtsMo', type=float, dest='sigdtsMo', default=1.0, help='sigma (marginal variance) of the GP covariance for deltas of model output')
     p.add_argument('-gpdtsMo', dest='gpdtsMo', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether deltas of model output is a GP')
     p.add_argument('-useGradsFlag', dest='useGradsFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use analytically computed gradients to do optimisation')
-    p.add_argument('-useSimData', dest='useSimData', default=True,  type=lambda x: (str(x).lower() == 'true'), \
+    p.add_argument('-useSimData', dest='useSimData', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use simulated data')
     p.add_argument('-useCluster', dest='useCluster', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to run code on Uni cluster')
@@ -1969,7 +1320,7 @@ if __name__ == '__main__':
     p.add_argument('-cntry', type=str, dest='cntry', default='FR', help='Country of the geo data used')
     p.add_argument('-usecntryFlag', dest='usecntryFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use data for a specific country')
-    p.add_argument('-numObs', type=int, dest='numObs', default=200, help='Number of observations used in modelling')
+    p.add_argument('-numObs', type=int, dest='numObs', default=128, help='Number of observations used in modelling')
     p.add_argument('-numMo', type=int, dest='numMo', default=50, help='Number of model outputs used in modelling')
     p.add_argument('-crossValFlag', dest='crossValFlag', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='whether to validate the model using cross validation')
@@ -1977,7 +1328,10 @@ if __name__ == '__main__':
     args = p.parse_args()
     if args.output is None: args.output = os.getcwd()
     if args.useSimData:  
-        output_folder = args.output + '/dataSimulated/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) 
+        output_folder = args.output + '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_fixMb_' + str(args.fixMb) + '_onlyOptimCovPar_' + str(args.onlyOptimCovPar) + \
+        '_poly_deg_' + str(args.poly_deg) + '_lsZs_' + str(args.lsZs) + '_lsdtsMo_' + str(args.lsdtsMo) \
+        + '_sigZs_' + str(args.sigZs) + '_sigdtsMo_' + str(args.sigdtsMo) + '_gpdtsMo_' + str(args.gpdtsMo) + \
+        '_useGradsFlag_' + str(args.useGradsFlag) + '_repeat' + str(args.repeat)
     else: 
         if args.usecntryFlag:
             if args.oneRepPerJob:
@@ -1985,7 +1339,7 @@ if __name__ == '__main__':
                 '/folder_' + str(args.folder) + '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_poly_deg_' + str(args.poly_deg) + \
                 '_repeat' + str(args.repeat) 
             else:
-                output_folder = args.output + '/Data/FPstart2016020612_FR_numObs_328_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) 
+                output_folder = args.output + '/Data/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) 
         else:
             if args.oneRepPerJob:
                 output_folder = args.output + '/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/folder_' + str(args.folder) + \
@@ -1997,7 +1351,7 @@ if __name__ == '__main__':
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     output_folder += '/'
-    print 'Output: ' + output_folder
+    print('Output: ' + output_folder)
 
     # check_grads()
     # test_fun(args.useCluster, args.SEED)
@@ -2006,11 +1360,10 @@ if __name__ == '__main__':
     start = default_timer()
     np.random.seed(args.SEED)
 
-    if args.useSimData: 
-        input_folder = os.getcwd() + '/dataSimulated/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
-    else:
-        input_folder = 'Data/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
-        + '/seed' + str(args.SEED) + '/'
+    # X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = simData.sim_hatTildZs_With_Plots(SEED = args.SEED, phi_Z_s = [args.lsZs], gp_deltas_modelOut = args.gpdtsMo, \
+    #     phi_deltas_of_modelOut = [args.lsdtsMo], sigma_Zs = args.sigZs, sigma_deltas_of_modelOut = args.sigdtsMo)
+    input_folder = 'Data/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
+    + '/seed' + str(args.SEED) + '/'
     if args.useCluster:
         if args.usecntryFlag:
             if args.crossValFlag:
@@ -2032,6 +1385,7 @@ if __name__ == '__main__':
             else:
                 X_hatZs_in = open(input_folder + 'X_hatZs.pkl', 'rb')
                 X_hatZs = pickle.load(X_hatZs_in) 
+                
              
                 y_hatZs_in = open(input_folder + 'y_hatZs.pkl', 'rb')
                 y_hatZs = pickle.load(y_hatZs_in) 
@@ -2054,22 +1408,14 @@ if __name__ == '__main__':
     # end = default_timer()
 
     # print 'running time for HMC sampler is '  + str(end - start) + ' seconds'
-    if args.crossValFlag:
-        if args.fixMb:
-            res = Gibbs_sampler(X_train, y_train, X_tildZs, y_tildZs, areal_hatZs)
-            mu, cov = res.sampler(args.withPrior, args.onlyOptimCovPar, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
-        else:
-            mu, cov = optimise(X_train, y_train, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
-            # mu = optimise(X_train, y_train, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED) # TNC optimization
-    else:
-        if args.fixMb:
-            res = Gibbs_sampler(X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_hatZs)
-            mu, cov = res.sampler(args.withPrior, args.onlyOptimCovPar, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
-        else:
-            mu, cov = optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED, args.numMo)
+    if args.crossValFlag:    
+        mu, cov = optimise(X_train, y_train, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
+        # mu = optimise(X_train, y_train, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED) # TNC optimization
+    else: 
+        mu, cov = optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED, args.numMo)
 
     end = default_timer()
-    print 'running time for optimisation using simData is ' + str(args.useSimData) + ' :' + str(end - start) + ' seconds'
+    print('running time for optimisation  is '  + str(end - start) + ' seconds')
 
     # computing the 95% confidence intervals  for each parameters
 
@@ -2100,49 +1446,31 @@ if __name__ == '__main__':
     # print 'rounded lower_interval is ' + str(lower_interval_rounded)
 
     if args.useSimData:
-        # true_bias_pars = np.array([0.6, 2., 3., 15.])
-        # if args.gpdtsMo:
-        #     true_gp_pars = np.array([args.sigZs, args.lsZs, 0.1, args.sigdtsMo, args.lsdtsMo])
-        # else:
-        #     true_gp_pars = np.array([args.sigZs, args.lsZs, 0.1, args.sigdtsMo])
+        true_bias_pars = np.array([2., 5., 5., 3.])
+        if args.gpdtsMo:
+            true_gp_pars = np.array([args.sigZs, args.lsZs, 0.1, args.sigdtsMo, args.lsdtsMo])
+        else:
+            true_gp_pars = np.array([args.sigZs, args.lsZs, 0.1, args.sigdtsMo])
 
-        # true_pars = np.concatenate((true_gp_pars, true_bias_pars))
+        true_pars = np.concatenate((true_gp_pars, true_bias_pars))
 
-        # flag_in_confiInterv = (true_pars >= lower_interval) & (true_pars <= upper_interval)
-        # print 'status of within the 95 percent confidence interval is ' + str(flag_in_confiInterv)
-        # count_in_confiInterv  = np.sum(flag_in_confiInterv.astype(int))
-        # print 'number of estimated parameters within the 95 percent confidence interval is ' + str(count_in_confiInterv)
+        flag_in_confiInterv = (true_pars >= lower_interval) & (true_pars <= upper_interval)
+        print('status of within the 95 percent confidence interval is ' + str(flag_in_confiInterv))
+        count_in_confiInterv  = np.sum(np.array(map(int, flag_in_confiInterv)))
+        print('number of estimated parameters within the 95 percent confidence interval is ' + str(count_in_confiInterv))
 
-        # flag_in_confiInterv_r = (true_pars >= lower_interval_rounded) & (true_pars <= upper_interval_rounded)
-        # print 'status of within the 95 percent confidence interval with rounding is ' + str(flag_in_confiInterv_r)
-        # count_in_confiInterv_r  = np.sum(flag_in_confiInterv_r.astype(int))
-        # print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
+        flag_in_confiInterv_r = (true_pars >= lower_interval_rounded) & (true_pars <= upper_interval_rounded)
+        print('status of within the 95 percent confidence interval with rounding is ' + str(flag_in_confiInterv_r))
+        count_in_confiInterv_r  = np.sum(np.array(map(int, flag_in_confiInterv_r)))
+        print('number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r))
 
-        # res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
-        # 'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded, \
-        # 'count_in_confiInterv':count_in_confiInterv, 'count_in_confiInterv_rounded':count_in_confiInterv_r}
-        res = {'mu':mu, 'cov':cov}
-        res_out = open(output_folder  + 'resOptimSim.pkl', 'wb')
+        res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
+        'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded, \
+        'count_in_confiInterv':count_in_confiInterv, 'count_in_confiInterv_rounded':count_in_confiInterv_r}
+
+        res_out = open(output_folder  + 'resOptim.pkl', 'wb')
         pickle.dump(res, res_out)
         res_out.close()
-        # X_train = X_hatZs[:-50, :]
-        # X_test = X_hatZs[-50:, :]
-        # y_train = y_hatZs[:-50]
-        # y_test = y_hatZs[-50:]
-        
-        X_train = X_hatZs
-        y_train = y_hatZs
-
-        input_folder = os.getcwd() + '/dataSimulated/seed' + str(args.SEED) + '/'
-        all_X_Zs_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
-        all_X_Zs = pickle.load(all_X_Zs_in) 
-
-        all_y_Zs_in = open(input_folder + 'all_y_Zs.pickle', 'rb')
-        all_y_Zs = pickle.load(all_y_Zs_in) 
-
-        X_test = all_X_Zs
-        y_test = all_y_Zs
-        predic_accuracy = gpGaussLikeFuns.predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo, args.useSimData)
     else:
     #     res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
     # 'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded}
@@ -2152,7 +1480,7 @@ if __name__ == '__main__':
         res_out.close()
         if args.crossValFlag:
             predic_accuracy = gpGaussLikeFuns.predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag)
-            print 'predic_accuracy for seed ' + str(args.SEED) + ' fold ' + str(args.idxFold) + ' is ' + '{:.1%}'.format(predic_accuracy)
+            print('predic_accuracy for seed ' + str(args.SEED) + ' fold ' + str(args.idxFold) + ' is ' + '{:.1%}'.format(predic_accuracy))
         else:
             X_train = X_hatZs[:-50, :]
             X_test = X_hatZs[-50:, :]
