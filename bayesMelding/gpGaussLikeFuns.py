@@ -3,12 +3,13 @@ from scipy import linalg
 import computeN3Cost
 import numbers
 import pickle
+import os
 import argparse
 from itertools import chain
-import statsmodels.api as sm
+# import statsmodels.api as sm
 # from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import pyplot as plt
-plt.switch_backend('agg') # This line is for running code on cluster to make pyplot working on cluster
+# from matplotlib import pyplot as plt
+# plt.switch_backend('agg') # This line is for running code on cluster to make pyplot working on cluster
 
 np.seterr(over='raise', divide='raise')
 
@@ -296,7 +297,7 @@ def log_py_giv_par(theta, X, y, OMEGA = 1e-6):
 
     return log_like
 
-def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, crossValFlag = False, SEED=None, numMo = None, \
+def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, crossValFlag = False,  SEED=None, numMo = None, useSimData =False, grid= False, \
     gp_deltas_modelOut = True, withPrior= False, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
@@ -327,7 +328,25 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 
     mat = np.zeros(n_bothZs * n_bothZs).reshape(n_bothZs, n_bothZs)
 
-    C_hatZs = cov_matrix_reg(X = X_train, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), obs_noi_scale = np.exp(log_obs_noi_scale))
+
+    # print(np.exp(log_sigma_Zs), np.exp(log_phi_Zs),  np.exp(log_obs_noi_scale))
+
+    # print(np.round(np.exp(log_sigma_Zs), 1), np.round(np.exp(log_phi_Zs), 1),  np.round(np.exp(log_obs_noi_scale),1))
+
+    C_hatZs = cov_matrix_reg(X = X_train, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), \
+     obs_noi_scale = np.exp(log_obs_noi_scale))
+
+    # C_hatZs = cov_matrix_reg(X = X_train, sigma = 1.1143612, w = np.array( [0.82821735]), \
+    #  obs_noi_scale = np.array([0.1067566]))
+
+    # C_hatZs = cov_matrix_reg(X = X_train, sigma = 1.0834896224616308, w = np.array( [0.80397927]), \
+    #  obs_noi_scale = np.array([0.10559963]))
+
+    # C_hatZs = cov_matrix_reg(X = X_train, sigma = 1.1, w = np.array( [0.8]), \
+    #  obs_noi_scale = np.array([0.1]))
+
+    # C_hatZs = cov_matrix_reg(X = X_train, sigma = np.round(np.exp(log_sigma_Zs), 1), w = np.round(np.exp(log_phi_Zs), 1), \
+    #  obs_noi_scale = np.round(np.exp(log_obs_noi_scale),1))
     if gp_deltas_modelOut:
         C_tildZs, _= cov_areal(X_tildZs, log_sigma_Zs, log_phi_Zs, b, log_sigma_deltas_of_modelOut, \
             gp_deltas_modelOut, log_phi_deltas_of_modelOut)
@@ -359,9 +378,22 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 
     l_chol_C = compute_L_chol(mat)
     u = linalg.solve_triangular(l_chol_C.T, linalg.solve_triangular(l_chol_C, y - mu_hatTildZs, lower=True))
-
-    output_folder = 'Data/FPstart2016020612_FR_numObs_328_numMo_' + str(numMo) + '/seed' + str(SEED) + '/'
+    if useSimData:
+        if grid:
+            output_folder = os.getcwd() + '/bmVsKrigGridScale/numObs_200_numMo_' + str(numMo) + '/seed' + str(SEED) 
+        else:
+            output_folder = os.getcwd() + '/dataSimulated/numObs_200_numMo_' + str(numMo) + '/seed' + str(SEED) 
+    else:
+        output_folder = 'Data/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED) 
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    output_folder += '/'
+    print('output_folder in gpGaussLikeFuns is ' + str(output_folder))
     #*******************************comupute the prediction part for out-of-sample ntest test data points under each theta **********************************************************
+    idx = np.argsort(y_test)
+    y_test = y_test[idx]
+    X_test = X_test[idx, :]
+
     ntest = X_test.shape[0]
     K_star_star = np.zeros((ntest,1))
     K_star_hatZs = cov_mat_xy(X_train, X_test, np.exp(log_sigma_Zs), np.exp(log_phi_Zs)) # is a matrix of size (n_train, n_test)
@@ -374,35 +406,41 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     # print 'estimated mean is ' + str(mu_star)
     # print 'y_test is ' + str(y_test)
 
-    rmse = np.sqrt(np.mean((y_test - mu_star)**2))
-
-    print 'Out-of-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse)
-
+    if grid:
+        rmse = y_test - mu_star
+        print('Out-of-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
+    else:
+        rmse = np.sqrt(np.mean((y_test - mu_star)**2))
+        print('Out-of-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
+    
     rmse_out = open(output_folder + 'rmse_outSample.pkl', 'wb')
     pickle.dump(rmse, rmse_out) 
     rmse_out.close()
 
     if not crossValFlag:
         index = np.arange(len(y_test))
-        standardised_y_estimate = (mu_star - y_test)/np.exp(log_obs_noi_scale)
+        if useSimData:
+            standardised_y_estimate = (mu_star - y_test)
+        else:
+            standardised_y_estimate = (mu_star - y_test)/np.exp(log_obs_noi_scale)
         std_yEst_out = open(output_folder + 'std_yEst_outSample.pkl', 'wb')
         pickle.dump(standardised_y_estimate, std_yEst_out)
-        plt.figure()
-        plt.scatter(index, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
-        # plt.scatter(index, standardised_y_etstimate, c='k')
-        plt.axhline(0, color='black', lw=1.2, ls ='-')
-        plt.axhline(2, color='black', lw=1.2, ls =':')
-        plt.axhline(-2, color='black', lw=1.2, ls =':')
-        plt.xlabel('Index')
-        plt.ylabel('Standardised residual')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_outSample.png')
-        #plt.show()
-        plt.close()
+        # plt.figure()
+        # plt.scatter(index, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
+        # # plt.scatter(index, standardised_y_etstimate, c='k')
+        # plt.axhline(0, color='black', lw=1.2, ls ='-')
+        # plt.axhline(2, color='black', lw=1.2, ls =':')
+        # plt.axhline(-2, color='black', lw=1.2, ls =':')
+        # plt.xlabel('Index')
+        # plt.ylabel('Standardised residual')
+        # plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_outSample.png')
+        # #plt.show()
+        # plt.close()
 
-        sm.qqplot(standardised_y_estimate, line='45')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'normalQQ_outSample.png')
-        #plt.show()
-        plt.close()
+        # sm.qqplot(standardised_y_estimate, line='45')
+        # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'normalQQ_outSample.png')
+        # #plt.show()
+        # plt.close()
     
     LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
     for i in range(ntest):
@@ -411,17 +449,53 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     vstar = K_star_star - np.sum(LKstar**2, axis=0).reshape(ntest,1) 
     vstar[vstar < 0] = 1e-9
     vstar = vstar.reshape(ntest, )
-    print 'Out of sample estimated variance is ' + str(vstar)
+    # print('Out of sample estimated variance is ' + str(vstar))
 
-    avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
-
-    print 'Out of sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var) 
+    if useSimData:
+        if grid:
+            avg_width_of_predic_var = np.sqrt(vstar)
+        else:
+            avg_width_of_predic_var = np.mean(np.sqrt(vstar))    
+    else:
+        avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
+    print('Out of sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var)) 
+    # print('Out of sample width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var)) 
     avgVar_out = open(output_folder + 'avgVar_outSample.pkl', 'wb')
     pickle.dump(avg_width_of_predic_var, avgVar_out) 
     avgVar_out.close()
 
-    upper_interv_predic = mu_star + 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
-    lower_interv_predic = mu_star - 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+    if useSimData:
+        upper_interv_predic = mu_star + 2 * np.sqrt(vstar)
+        lower_interv_predic = mu_star - 2 * np.sqrt(vstar)
+    else:
+        upper_interv_predic = mu_star + 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+        lower_interv_predic = mu_star - 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+
+    # plt.figure()
+    # plt.plot(y_test, y_test, ls='-', color = 'r')
+    # plt.scatter(y_test, mu_star, color='black', label='predic_mean')
+    # plt.scatter(y_test, upper_interv_predic, color = 'blue', label = 'predic_upper_CI')
+    # plt.scatter(y_test, lower_interv_predic, color ='green', label = 'predic_lower_CI')
+    # plt.xlabel('Observations')
+    # plt.ylabel('Predictions')
+    # plt.legend(loc='best')
+    # plt.title('Out of sample prediction')
+    # plt.savefig('BM_predic_scattter_seed' + str(SEED)+ 'numMo' + str(numMo) + 'mean.png')
+    # plt.show()
+    # plt.close()
+
+    # plt.figure()
+    # plt.plot(y_test, y_test, ls='-', color = 'r')
+    # plt.scatter(y_test, mu_star, color='black', label='predic_mean')
+    # plt.scatter(y_test, upper_interv_predic, color = 'blue', label = 'predic_upper_CI')
+    # plt.scatter(y_test, lower_interv_predic, color ='green', label = 'predic_lower_CI')
+    # plt.xlabel('Observations')
+    # plt.ylabel('Predictions')
+    # plt.legend(loc='best')
+    # plt.title('Out of sample prediction')
+    # plt.savefig('BM_predic_scattter_seed' + str(SEED)+ 'numMo' + str(numMo) + '.png')
+    # plt.show()
+    # plt.close()
 
     upper_interval_rounded = np.round(upper_interv_predic, 1)
     lower_interval_rounded = np.round(lower_interv_predic, 1)
@@ -429,34 +503,43 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     # print 'rounded lower_interval is ' + str(lower_interval_rounded)
 
     flag_in_confiInterv_r = (y_test >= lower_interval_rounded) & (y_test <= upper_interval_rounded)
-    count_in_confiInterv_r  = np.sum(np.array(map(int, flag_in_confiInterv_r)))
-    # print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
-    succRate = count_in_confiInterv_r/np.float(len(y_test))
-    print 'Out of sample prediction accuracy is ' + '{:.1%}'.format(succRate)
+    flag_in_confiInterv_r = flag_in_confiInterv_r.astype(int)
+    count_in_confiInterv_r  = np.sum(flag_in_confiInterv_r.astype(int))
+    
+    succRate = np.round(count_in_confiInterv_r/np.float(len(y_test)), 3)
+    print('Out of sample prediction accuracy is ' + '{:.1%}'.format(succRate))
 
     accuracy_out = open(output_folder + 'predicAccuracy_outSample.pkl', 'wb')
-    pickle.dump(succRate, accuracy_out) 
+    if grid:
+        print('flag_in_confiInterv_r is ' + str(flag_in_confiInterv_r))
+        pickle.dump(flag_in_confiInterv_r, accuracy_out)
+    else:
+        pickle.dump(succRate, accuracy_out) 
+     
     accuracy_out.close()
 
 
-    lower_bound = np.array([-10, -6])
-    upper_bound = np.array([-4, 2])
-    point_res = 20
-    x1, x2 = np.meshgrid(np.linspace(lower_bound[0], upper_bound[0], point_res),  
-                         np.linspace(lower_bound[1], upper_bound[1], point_res))
-    x1_vec = x1.ravel()
-    x2_vec = x2.ravel()
-    X_plot = np.vstack((x1_vec, x2_vec)).T
+    # lower_bound = np.array([-10, -6])
+    # upper_bound = np.array([-4, 2])
+    lower_bound = np.array([-12., -6.5])
+    upper_bound = np.array([-3., 3.])
+    point_res = 100
+    # print 'len of mu_star is ' + str(len(mu_star))
+    # x1, x2 = np.meshgrid(np.linspace(lower_bound[0], upper_bound[0], point_res),  
+    #                      np.linspace(lower_bound[1], upper_bound[1], point_res))
+    # x1_vec = x1.ravel()
+    # x2_vec = x2.ravel()
+    # X_plot = np.vstack((x1_vec, x2_vec)).T
 
-    nplot = X_plot.shape[0]
-    K_star_star = np.zeros((nplot,1))
-    K_star_hatZs = cov_mat_xy(X_train, X_plot, np.exp(log_sigma_Zs), np.exp(log_phi_Zs)) # is a matrix of size (n_train, n_plot)
-    K_star_hatZs = K_star_hatZs.T
-    _, avg_pointAreal_upper, _, _ = point_areal(X_plot, X_tildZs, log_sigma_Zs, log_phi_Zs, b)
-    K_star_tildZs =avg_pointAreal_upper
+    # nplot = X_plot.shape[0]
+    # K_star_star = np.zeros((nplot,1))
+    # K_star_hatZs = cov_mat_xy(X_train, X_plot, np.exp(log_sigma_Zs), np.exp(log_phi_Zs)) # is a matrix of size (n_train, n_plot)
+    # K_star_hatZs = K_star_hatZs.T
+    # _, avg_pointAreal_upper, _, _ = point_areal(X_plot, X_tildZs, log_sigma_Zs, log_phi_Zs, b)
+    # K_star_tildZs =avg_pointAreal_upper
 
-    K_star = np.hstack((K_star_hatZs, K_star_tildZs))
-    mu_plot = np.dot(K_star, u)
+    # K_star = np.hstack((K_star_hatZs, K_star_tildZs))
+    # mu_plot = np.dot(K_star, u)
 
     # fig = plt.figure()
     # ax = Axes3D(fig)
@@ -468,6 +551,22 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'BM_predic_scat.png')
     # plt.close()
 
+    # plt.figure()
+    # im = plt.imshow(np.flipud(mu_star.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap =plt.matplotlib.cm.jet)
+    # # plt.scatter(X_hatZs[:,0], X_hatZs[:,1], s=12, c='k', marker = 'o')
+    # print (mu_star.min(), mu_star.max())
+    # cb=plt.colorbar(im)
+    # cb.set_label('${Z(s)}$')
+    # # plt.title('min = %.2f , max = %.2f , avg = %.2f' % (mu_plot.min(), mu_plot.max(), mu_plot.mean()))
+    # plt.xlabel('$lon$')
+    # plt.ylabel('$lat$')
+    # plt.title('Prediction of BM')
+    # plt.grid()
+    # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'BM_predic_2D.png')
+    # plt.show()
+    # plt.close()
+
+
     # fig = plt.figure()
     # ax = Axes3D(fig)
     # surf = ax.plot_surface(x1, x2, mu_plot.reshape(point_res, point_res), rstride=1, cstride=1, cmap='viridis')
@@ -475,6 +574,10 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     # ax.set_ylabel('$lat$')
     # ax.set_zlabel('$Z(s)$')
     # fig.colorbar(surf, shrink=0.85)
+    # ax = plt.gca()
+    # print('ylim is ' + str(ax.get_ylim()))
+    # print('xlim is ' + str(ax.get_xlim()))
+    # print('zlim is ' + str(ax.get_zlim()))
     # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'BM_predic_surf.png')
     # plt.close()
 
@@ -495,7 +598,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 
     rmse = np.sqrt(np.mean((y_test - mu_star)**2))
 
-    print 'In-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse)
+    print('In-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
 
     rmse_out = open(output_folder + 'rmse_inSample.pkl', 'wb')
     pickle.dump(rmse, rmse_out) 
@@ -506,22 +609,22 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         standardised_y_estimate = (mu_star - y_test)/np.exp(log_obs_noi_scale)
         std_yEst_out = open(output_folder + 'std_yEst_inSample.pkl', 'wb')
         pickle.dump(standardised_y_estimate, std_yEst_out)
-        plt.figure()
-        plt.scatter(index, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
-        # plt.scatter(index, standardised_y_etstimate, c='k')
-        plt.axhline(0, color='black', lw=1.2, ls ='-')
-        plt.axhline(2, color='black', lw=1.2, ls =':')
-        plt.axhline(-2, color='black', lw=1.2, ls =':')
-        plt.xlabel('Index')
-        plt.ylabel('Standardised residual')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_inSample.png')
-        #plt.show()
-        plt.close()
+        # plt.figure()
+        # plt.scatter(index, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
+        # # plt.scatter(index, standardised_y_etstimate, c='k')
+        # plt.axhline(0, color='black', lw=1.2, ls ='-')
+        # plt.axhline(2, color='black', lw=1.2, ls =':')
+        # plt.axhline(-2, color='black', lw=1.2, ls =':')
+        # plt.xlabel('Index')
+        # plt.ylabel('Standardised residual')
+        # plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_inSample.png')
+        # #plt.show()
+        # plt.close()
 
-        sm.qqplot(standardised_y_estimate, line='45')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'normalQQ_inSample.png')
-        #plt.show()
-        plt.close()
+        # sm.qqplot(standardised_y_estimate, line='45')
+        # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'normalQQ_inSample.png')
+        # #plt.show()
+        # plt.close()
     
     LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
     for i in range(ntest):
@@ -530,11 +633,11 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     vstar = K_star_star - np.sum(LKstar**2, axis=0).reshape(ntest,1) 
     vstar[vstar < 0] = 1e-9
     vstar = vstar.reshape(ntest, )
-    print 'In-sample estimated variance is ' + str(vstar)
+    # print('In-sample estimated variance is ' + str(vstar))
 
     avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
 
-    print 'In-sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var) 
+    print('In-sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var)) 
     avgVar_out = open(output_folder + 'avgVar_inSample.pkl', 'wb')
     pickle.dump(avg_width_of_predic_var, avgVar_out) 
     avgVar_out.close()
@@ -548,10 +651,10 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     # print 'rounded lower_interval is ' + str(lower_interval_rounded)
 
     flag_in_confiInterv_r = (y_test >= lower_interval_rounded) & (y_test <= upper_interval_rounded)
-    count_in_confiInterv_r  = np.sum(np.array(map(int, flag_in_confiInterv_r)))
+    count_in_confiInterv_r  = np.sum(flag_in_confiInterv_r.astype(int))
     # print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
     succRate = count_in_confiInterv_r/np.float(len(y_test))
-    print 'In-sample prediction accuracy is ' + '{:.1%}'.format(succRate)
+    print('In-sample prediction accuracy is ' + '{:.1%}'.format(succRate))
 
     accuracy_out = open(output_folder + 'predicAccuracy_inSample.pkl', 'wb')
     pickle.dump(succRate, accuracy_out) 
@@ -562,36 +665,60 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 if __name__ == '__main__':
     computeN3Cost.init(0)
     p = argparse.ArgumentParser()
-    p.add_argument('-SEED', type=int, dest='SEED', default=99, help='The simulation index')
-    p.add_argument('-numObs', type=int, dest='numObs', default=328, help='Number of observations used in modelling')
-    p.add_argument('-numMo', type=int, dest='numMo', default=300, help='Number of model outputs used in modelling')
-    p.add_argument('-crossValFlag', dest='crossValFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
+    p.add_argument('-SEED', type=int, dest='SEED', default=200, help='The simulation index')
+    p.add_argument('-numObs', type=int, dest='numObs', default=200, help='Number of observations used in modelling')
+    p.add_argument('-numMo', type=int, dest='numMo', default=50, help='Number of model outputs used in modelling')
+    p.add_argument('-crossValFlag', dest='crossValFlag', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='whether to validate the model using cross validation')
+    p.add_argument('-useSimData', dest='useSimData', default=True,  type=lambda x: (str(x).lower() == 'true'), \
+        help='flag for whether to use simulated data')
+    p.add_argument('-grid', dest='grid', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether the predictions are produced for each grid')
+    
     args = p.parse_args()
-    input_folder = 'sampRealData/FPstart2016020612_FR' + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
-    + '/seed' + str(args.SEED) + '/fold_9/'
-    
-    X_train_in = open(input_folder + 'X_train.pkl', 'rb')
-    X_train = pickle.load(X_train_in) 
-    y_train_in = open(input_folder + 'y_train.pkl', 'rb')
-    y_train = pickle.load(y_train_in) 
+    if args.useSimData: 
+        input_folder = os.getcwd() + '/dataRsimGammaTransformErrorInZtilde/numObs_200_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+    else:
+        input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
 
-    
-    X_test_in = open(input_folder + 'X_test.pkl', 'rb')
-    X_test = pickle.load(X_test_in)
-    y_test_in = open(input_folder + 'y_test.pkl', 'rb')
-    y_test = pickle.load(y_test_in) 
+    X_hatZs_in = open(input_folder + 'X_hatZs.pkl', 'rb')
+    X_hatZs = pickle.load(X_hatZs_in) 
+ 
+    y_hatZs_in = open(input_folder + 'y_hatZs.pkl', 'rb')
+    y_hatZs = pickle.load(y_hatZs_in) 
 
     X_tildZs_in = open(input_folder + 'X_tildZs.pkl', 'rb')
-    X_tildZs = pickle.load(X_tildZs_in)
+    X_tildZs = pickle.load(X_tildZs_in) 
+  
     y_tildZs_in = open(input_folder + 'y_tildZs.pkl', 'rb')
     y_tildZs = pickle.load(y_tildZs_in)
+    if args.useSimData:
+        resOptim_in = open(input_folder + 'resOptimSim.pkl', 'rb')
+    else:
+        resOptim_in = open(input_folder + 'resOptim.pkl', 'rb')
+    
+    resOptim = pickle.load(resOptim_in)
+    mu = resOptim['mu']
+    print('theta from optimisation is ' + str(mu)) 
+    print(np.exp(mu[:-4]))
+   
+    if args.useSimData:
+        X_train = X_hatZs
+        y_train = y_hatZs
 
-    #print(X_train.shape, len(y_train), X_test.shape, len(y_test), X_tildZs.shape, len(y_tildZs))
+        input_folder = os.getcwd() + '/dataRsimGammaTransformErrorInZtilde/seed' + str(args.SEED) + '/'
+        all_X_Zs_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
+        all_X_Zs = pickle.load(all_X_Zs_in) 
 
-    #theta = np.array( [ 3.72674869 , 0.12894193 , 1.54274378,  1.82996181, -1.96568741,  0.70004865,-0.37216012,  0.51501297, 22.86981066])
-    theta =np.array([ 3.66762091,  0.20002257, 1.56441102 ,1.84484707, -1.95426797,  0.7243814,-0.40599662,  0.47641285 ,22.67447721])
-    predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs)
+        all_y_Zs_in = open(input_folder + 'all_y_Zs.pickle', 'rb')
+        all_y_Zs = pickle.load(all_y_Zs_in) 
 
+        X_test = all_X_Zs
+        y_test = all_y_Zs
+    else:
+        X_train = X_hatZs[:-50, :]
+        X_test = X_hatZs[-50:, :]
+        y_train = y_hatZs[:-50]
+        y_test = y_hatZs[-50:]
 
-
+    predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo, args.useSimData, args.grid)
+         

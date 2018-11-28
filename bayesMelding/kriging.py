@@ -10,9 +10,10 @@ from timeit import default_timer
 from scipy import integrate
 import argparse
 import os
-import statsmodels.api as sm
-from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+from itertools import chain
+# import statsmodels.api as sm
+# from matplotlib import pyplot as plt
+# from mpl_toolkits.mplot3d import Axes3D
 # plt.switch_backend('agg') # This line is for running code on cluster to make pyplot working on cluster
 
 # cov_matrix returns the covariance matix, where X is assumed to be stroed row-wise in a matrix, sigma and w are all positive
@@ -337,7 +338,7 @@ def optimise(X_hatZs, y_hatZs, withPrior, useGradsFlag = False, repeat=3, seed =
                 parameters = (np.exp(np.array(tmp_res['x'])[:3]), np.array(tmp_res['x'])[3:])
             logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, withPrior, zeroMeanHatZs)
             print('grads at theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(grads_at_resOptim))
-            flag_grads_equal_zero = np.round(grads_at_resOptim, 3) == 0.
+            flag_grads_equal_zero = np.round(grads_at_resOptim, 4) == 0.
             # if gradients from the first optimisation is zero, break out of the loop
             if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
                 LBFGSB_status = True
@@ -399,7 +400,7 @@ def optimise(X_hatZs, y_hatZs, withPrior, useGradsFlag = False, repeat=3, seed =
     else:
         return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'])]
 
-def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = True, SEED=None, zeroMeanHatZs = False, useSimData =False, \
+def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = True, SEED=None, zeroMeanHatZs = False, useSimData =False, grid = False, \
  withPrior= False, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
@@ -414,7 +415,15 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
         mu_hatZs_coeffis = theta[num_len_scal+2:]
 
     n_hatZs = X_train.shape[0]
+
+    # print(np.round(np.exp(log_sigma_Zs), 1), np.round(np.exp(log_phi_Zs), 1),  np.round(np.exp(log_obs_noi_scale),1))
     C_hatZs = cov_matrix_reg(X = X_train, sigma = np.exp(log_sigma_Zs), w = np.exp(log_phi_Zs), obs_noi_scale = np.exp(log_obs_noi_scale))
+    # C_hatZs = cov_matrix_reg(X = X_train, sigma = 1.0834896224616308, w = np.array( [0.80397927]), \
+    #  obs_noi_scale = np.array([0.10559963]))
+    # C_hatZs = cov_matrix_reg(X = X_train, sigma = 1.1, w = np.array( [0.8]), \
+    #  obs_noi_scale = np.array([0.1]))
+    # print(C_hatZs)
+   
 
     if zeroMeanHatZs:
         mu_train = np.zeros(len(y_train))
@@ -428,9 +437,19 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     l_chol_C = compute_L_chol(C_hatZs)
     u = linalg.solve_triangular(l_chol_C.T, linalg.solve_triangular(l_chol_C, y - mu_train, lower=True))
 
-    # output_folder = 'Kriging/seed' + str(SEED) + '/'
     # output_folder = 'dataSimGpDeltas/kriging/numObs_300/seed' + str(SEED) + '/'
-    output_folder = 'dataSimulated/kriging/numObs_200/seed' + str(SEED) + '/'
+    if useSimData:
+        if grid:
+            output_folder = os.getcwd() + '/bmVsKrigGridScale/kriging/numObs_200/seed' + str(SEED) 
+        else:
+            output_folder = os.getcwd() + '/dataSimulated/kriging/numObs_200/seed' + str(SEED) 
+    else:
+        output_folder = 'kriging/seed' + str(SEED) 
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    output_folder += '/'
+    print('output_folder in predic_gpRegression is ' + str(output_folder))
 
     #*******************************comupute the prediction part for out sample ntest test data points under each theta **********************************************************
     ntest = X_test.shape[0]
@@ -452,10 +471,12 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     # print 'estimated mean is ' + str(mu_star)
     # print 'y_test is ' + str(y_test)
 
-    rmse = np.sqrt(np.mean((y_test - mu_star)**2))
-    print('Out-of-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
-    rmse = y_test - mu_star
-    print('Out-of-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
+    if grid:
+        rmse = y_test - mu_star
+        print('Out-of-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
+    else:
+        rmse = np.sqrt(np.mean((y_test - mu_star)**2))
+        print('Out-of-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
 
     rmse_out = open(output_folder + 'rmse_krig_outSample.pkl', 'wb')
     pickle.dump(rmse, rmse_out) 
@@ -491,8 +512,10 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     # print('Out of sample estimated variance is ' + str(vstar))
 
     if useSimData:
-        # avg_width_of_predic_var = np.mean(np.sqrt(vstar))
-        avg_width_of_predic_var = np.sqrt(vstar)
+        if grid:
+            avg_width_of_predic_var = np.sqrt(vstar)
+        else:
+            avg_width_of_predic_var = np.mean(np.sqrt(vstar))    
     else:
         avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
 
@@ -517,15 +540,18 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
 
     flag_in_confiInterv_r = (y_test >= lower_interval_rounded) & (y_test <= upper_interval_rounded)
     flag_in_confiInterv_r = flag_in_confiInterv_r.astype(int)
-    print('flag_in_confiInterv_r is ' + str(flag_in_confiInterv_r))
+    
     count_in_confiInterv_r  = np.sum(flag_in_confiInterv_r.astype(int))
     # print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
     succRate = count_in_confiInterv_r/np.float(len(y_test))
     print('Out of sample prediction accuracy is ' + '{:.1%}'.format(succRate))
 
     accuracy_out = open(output_folder + 'predicAccuracy_krig_outSample.pkl', 'wb')
-    pickle.dump(flag_in_confiInterv_r, accuracy_out) 
-    # pickle.dump(succRate, accuracy_out) 
+    if grid:
+        print('flag_in_confiInterv_r is ' + str(flag_in_confiInterv_r))
+        pickle.dump(flag_in_confiInterv_r, accuracy_out) 
+    else:
+        pickle.dump(succRate, accuracy_out) 
     accuracy_out.close()
 
     lower_bound = np.array([-12., -6.5])
@@ -636,22 +662,22 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     if not crossValFlag:
         index = np.arange(len(y_test))
         standardised_y_estimate = (mu_star - mu_test)/np.exp(log_obs_noi_scale)
-        plt.figure()
-        plt.scatter(index, standardised_y_estimate, facecolors='none',  edgecolors='k', linewidths=1.2)
-        # plt.scatter(index, standardised_y_etstimate, c='k')
-        plt.axhline(0, color='black', lw=1.2, ls ='-')
-        plt.axhline(2, color='black', lw=1.2, ls =':')
-        plt.axhline(-2, color='black', lw=1.2, ls =':')
-        plt.xlabel('Index')
-        plt.ylabel('Standardised residual')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_krig_inSample.png')
-        # plt.show()
-        plt.close()
+        # plt.figure()
+        # plt.scatter(index, standardised_y_estimate, facecolors='none',  edgecolors='k', linewidths=1.2)
+        # # plt.scatter(index, standardised_y_etstimate, c='k')
+        # plt.axhline(0, color='black', lw=1.2, ls ='-')
+        # plt.axhline(2, color='black', lw=1.2, ls =':')
+        # plt.axhline(-2, color='black', lw=1.2, ls =':')
+        # plt.xlabel('Index')
+        # plt.ylabel('Standardised residual')
+        # plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_krig_inSample.png')
+        # # plt.show()
+        # plt.close()
 
-        sm.qqplot(standardised_y_estimate, line='45')
-        plt.savefig(output_folder + 'SEED' + str(SEED) + 'normalQQ_krig_inSample.png')
-        # plt.show()
-        plt.close()
+        # sm.qqplot(standardised_y_estimate, line='45')
+        # plt.savefig(output_folder + 'SEED' + str(SEED) + 'normalQQ_krig_inSample.png')
+        # # plt.show()
+        # plt.close()
     
     LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
     for i in range(ntest):
@@ -711,10 +737,12 @@ if __name__ == '__main__':
         help='whether to zero mean for y_hatZs')
     p.add_argument('-useSimData', dest='useSimData', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use simulated data')
+    p.add_argument('-grid', dest='grid', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether the predictions are produced for each grid')
+    
     args = p.parse_args()
     if args.output is None: args.output = os.getcwd()
     if args.usecntryFlag:
-        if args.useSimData:  
+        if args.useSimData:
             output_folder = args.output + '/dataSimulated/kriging/numObs_' + str(args.numObs) + '/seed' + str(args.SEED) 
             # output_folder = args.output + '/dataSimGpDeltas/kriging/numObs_' + str(args.numObs) + '/seed' + str(args.SEED) 
         else:
@@ -727,7 +755,7 @@ if __name__ == '__main__':
     start = default_timer()
     np.random.seed(args.SEED)
     if args.useSimData: 
-        input_folder = os.getcwd() + '/dataSimulated/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+        input_folder = os.getcwd() + '/dataRsimGammaTransformErrorInZtilde/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
         # input_folder = os.getcwd() + '/dataSimGpDeltas/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
     else:
         input_folder = 'Data/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
@@ -751,91 +779,104 @@ if __name__ == '__main__':
         else:
             X_hatZs_in = open(input_folder + 'X_hatZs.pkl', 'rb')
             X_hatZs = pickle.load(X_hatZs_in) 
+
+            
             if args.zeroMeanHatZs:
                 y_hatZs_in = open(input_folder + 'y_hatZs.pkl', 'rb')
             else:
                 y_hatZs_in = open(input_folder + 'y_hatZs_withMean.pkl', 'rb')
     
             y_hatZs = pickle.load(y_hatZs_in) 
+            
 
             areal_hatZs_in = open(input_folder + 'areal_hatZs.pkl', 'rb')
             areal_hatZs = pickle.load(areal_hatZs_in)
+    if not args.grid:      
+        if args.crossValFlag:   
+            mu, cov = optimise(X_train, y_train, args.withPrior, args.useGradsFlag, args.repeat, args.SEED, args.zeroMeanHatZs)
+        else:   
+            mu, cov = optimise(X_hatZs, y_hatZs, args.withPrior, args.useGradsFlag, args.repeat, args.SEED, args.zeroMeanHatZs)
 
-    if args.crossValFlag:   
-        mu, cov = optimise(X_train, y_train, args.withPrior, args.useGradsFlag, args.repeat, args.SEED, args.zeroMeanHatZs)
-    else:   
-        mu, cov = optimise(X_hatZs, y_hatZs, args.withPrior, args.useGradsFlag, args.repeat, args.SEED, args.zeroMeanHatZs)
+        end = default_timer()
+        print('running time for optimisation is ' + str(end - start) + ' seconds')
 
-    end = default_timer()
-    print('running time for optimisation is ' + str(end - start) + ' seconds')
+        # # computing the 95% confidence intervals  for each parameters
 
-    # # computing the 95% confidence intervals  for each parameters
+        # if args.zeroMeanHatZs:
+        #     cov_pars = np.exp(np.array(mu))
+        #     pars = cov_pars
+        # else:
+        #     cov_pars = np.exp(np.array(mu[:3]))
+        #     bias_pars = np.array(mu[3:])
+        #     pars = np.concatenate((cov_pars, bias_pars))
+        # pars = np.round(pars,1)
+        # print('estimated pars rounded to one decimal point :' + str(pars))
 
-    # if args.zeroMeanHatZs:
-    #     cov_pars = np.exp(np.array(mu))
-    #     pars = cov_pars
-    # else:
-    #     cov_pars = np.exp(np.array(mu[:3]))
-    #     bias_pars = np.array(mu[3:])
-    #     pars = np.concatenate((cov_pars, bias_pars))
-    # pars = np.round(pars,1)
-    # print('estimated pars rounded to one decimal point :' + str(pars))
+        # tmp = np.diag(np.array(cov))
+        # if args.zeroMeanHatZs:
+        #     variance_log_covPars = tmp
+        #     print('variance_log_covPars is ' + str(variance_log_covPars))
+        #     upper_interv_covPars = np.exp(mu + 2 * np.sqrt(variance_log_covPars))
+        #     lower_interv_covPars = np.exp(mu - 2 * np.sqrt(variance_log_covPars))
+        #     upper_interval = upper_interv_covPars
+        #     lower_interval = lower_interv_covPars
+        #     print('upper_interval is ' + str(upper_interval))
+        #     print('lower_interval is ' + str(lower_interval))
+        # else:
+        #     variance_log_covPars = tmp[:3]
+        #     print('variance_log_covPars is ' + str(variance_log_covPars))
+        #     variance_biasPars = tmp[3:]
+        #     print('variance_biasPars is ' + str(variance_biasPars))
+        #     upper_interv_covPars = np.exp(mu[:3] + 2 * np.sqrt(variance_log_covPars))
+        #     lower_interv_covPars = np.exp(mu[:3] - 2 * np.sqrt(variance_log_covPars))
+        #     upper_interv_biasPars = bias_pars + 2 * np.sqrt(variance_biasPars)
+        #     lower_interv_biasPars = bias_pars - 2 * np.sqrt(variance_biasPars)
+        #     upper_interval = np.concatenate((upper_interv_covPars, upper_interv_biasPars))
+        #     lower_interval = np.concatenate((lower_interv_covPars, lower_interv_biasPars))
 
-    # tmp = np.diag(np.array(cov))
-    # if args.zeroMeanHatZs:
-    #     variance_log_covPars = tmp
-    #     print('variance_log_covPars is ' + str(variance_log_covPars))
-    #     upper_interv_covPars = np.exp(mu + 2 * np.sqrt(variance_log_covPars))
-    #     lower_interv_covPars = np.exp(mu - 2 * np.sqrt(variance_log_covPars))
-    #     upper_interval = upper_interv_covPars
-    #     lower_interval = lower_interv_covPars
-    #     print('upper_interval is ' + str(upper_interval))
-    #     print('lower_interval is ' + str(lower_interval))
-    # else:
-    #     variance_log_covPars = tmp[:3]
-    #     print('variance_log_covPars is ' + str(variance_log_covPars))
-    #     variance_biasPars = tmp[3:]
-    #     print('variance_biasPars is ' + str(variance_biasPars))
-    #     upper_interv_covPars = np.exp(mu[:3] + 2 * np.sqrt(variance_log_covPars))
-    #     lower_interv_covPars = np.exp(mu[:3] - 2 * np.sqrt(variance_log_covPars))
-    #     upper_interv_biasPars = bias_pars + 2 * np.sqrt(variance_biasPars)
-    #     lower_interv_biasPars = bias_pars - 2 * np.sqrt(variance_biasPars)
-    #     upper_interval = np.concatenate((upper_interv_covPars, upper_interv_biasPars))
-    #     lower_interval = np.concatenate((lower_interv_covPars, lower_interv_biasPars))
+        # upper_interval_rounded = np.round(upper_interval, 1)
+        # lower_interval_rounded = np.round(lower_interval, 1)
+        # print('rounded upper_interval is ' + str(upper_interval_rounded))
+        # print('rounded lower_interval is ' + str(lower_interval_rounded))
 
-    # upper_interval_rounded = np.round(upper_interval, 1)
-    # lower_interval_rounded = np.round(lower_interval, 1)
-    # print('rounded upper_interval is ' + str(upper_interval_rounded))
-    # print('rounded lower_interval is ' + str(lower_interval_rounded))
+    #     res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
+    # 'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded}
+        res = {'mu':mu, 'cov':cov}
+        res_out = open(output_folder  + 'resOptim_krig.pkl', 'wb')
+        pickle.dump(res, res_out)
+        res_out.close()
+    else:
+        input_folder = 'dataRsimGammaTransformErrorInZtilde/kriging/numObs_' + str(args.numObs) + '/seed' + str(args.SEED) + '/'
+        resOptim_in = open(input_folder + 'resOptim_krig.pkl', 'rb')
+        resOptim = pickle.load(resOptim_in)
+        mu = resOptim['mu']
+        print('theta from optimisation is ' + str(mu)) 
+        print(np.exp(mu))
 
-#     res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
-# 'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded}
-    res = {'mu':mu, 'cov':cov}
-    res_out = open(output_folder  + 'resOptim_krig.pkl', 'wb')
-    pickle.dump(res, res_out)
-    res_out.close()
     if args.crossValFlag:
         predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, args.crossValFlag, args.SEED, args.zeroMeanHatZs)
         print('predic_accuracy for seed ' + str(args.SEED) + ' fold ' + str(args.idxFold) + ' is ' + '{:.1%}'.format(predic_accuracy))
     else:
-        # X_train = X_hatZs[:-50, :]
-        # X_test = X_hatZs[-50:, :]
-        # y_train = y_hatZs[:-50]
-        # y_test = y_hatZs[-50:]
+        if args.useSimData:
+            X_train = X_hatZs
+            y_train = y_hatZs
+            # print(X_train.shape, y_train.shape)
+            input_folder = os.getcwd() + '/dataRsimGammaTransformErrorInZtilde/seed' + str(args.SEED) + '/'
+            all_X_Zs_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
+            all_X_Zs = pickle.load(all_X_Zs_in) 
 
-        X_train = X_hatZs
-        y_train = y_hatZs
+            all_y_Zs_in = open(input_folder + 'all_y_Zs.pickle', 'rb')
+            all_y_Zs = pickle.load(all_y_Zs_in) 
 
-        input_folder = os.getcwd() + '/dataSimulated/seed' + str(args.SEED) + '/'
-        all_X_Zs_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
-        all_X_Zs = pickle.load(all_X_Zs_in) 
+            X_test = all_X_Zs
+            y_test = all_y_Zs
+        else:
+            X_train = X_hatZs[:-50, :]
+            X_test = X_hatZs[-50:, :]
+            y_train = y_hatZs[:-50]
+            y_test = y_hatZs[-50:]
 
-        all_y_Zs_in = open(input_folder + 'all_y_Zs.pickle', 'rb')
-        all_y_Zs = pickle.load(all_y_Zs_in) 
-
-        X_test = all_X_Zs
-        y_test = all_y_Zs
-        predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, args.crossValFlag, args.SEED, args.zeroMeanHatZs, args.useSimData)
+        predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, args.crossValFlag, args.SEED, args.zeroMeanHatZs, args.useSimData, args.grid)
         # print 'predic_accuracy for seed ' + str(args.SEED)  + ' is ' + '{:.1%}'.format(predic_accuracy)
 
 

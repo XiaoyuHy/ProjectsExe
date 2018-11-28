@@ -888,7 +888,7 @@ def minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, 
 
     l_chol_C = gpGaussLikeFuns.compute_L_chol(mat)
     u = linalg.solve_triangular(l_chol_C.T, linalg.solve_triangular(l_chol_C, y - mu_hatTildZs, lower=True))     
-    joint_log_like  = -np.sum(np.log(np.diag(l_chol_C))) - 0.5 * np.dot(y - mu_hatTildZs, u) - 0.5 * n_bothZs * np.log(2*np.pi) 
+    joint_log_like  = - np.sum(np.log(np.diag(l_chol_C))) - 0.5 * np.dot(y - mu_hatTildZs, u) - 0.5 * n_bothZs * np.log(2*np.pi) 
 
     if withPrior:
 
@@ -1037,6 +1037,7 @@ def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, 
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
                 np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4)), axis=0)
             print('initial theta in optim_RndStart :' + str(initial_theta))
+            
             if useGradsFlag:
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                                x0=initial_theta, method=method,
@@ -1195,7 +1196,11 @@ def optim_NotRndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFla
 def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, useGradsFlag = False, repeat=3, seed =188, numMo =50, rounds =1, method='L-BFGS-B', rbf=True, OMEGA = 1e-6, \
     bounds = ((-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-50, 50), (-50, 50), (-50, 50), (-50, 50))): 
     print('starting optimising when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
-         '& useGradsFlag is ' + str(useGradsFlag)) 
+         '& useGradsFlag is ' + str(useGradsFlag))
+    if gpdtsMo:
+        bounds = bounds
+    else:
+        bounds = ((-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-50, 50), (-50, 50), (-50, 50), (-50, 50))
     if rbf:
         num_par=1
     else:
@@ -1274,9 +1279,10 @@ def check_grads():
     areal_hatZs_in = open(input_folder + 'areal_hatZs.pkl', 'rb')
     areal_hatZs = pickle.load(areal_hatZs_in)
     modelBias = np.array([ 1.97191694,  5.47022754 , 5.22854712, 2.5])
+    # initial_theta=np.concatenate((np.array([np.log(1.5), np.log(0.1), np.log(0.1), np.log(1.0),np.log(0.2)]),modelBias), axis=0)
     initial_theta=np.concatenate((np.array([np.log(1.5), np.log(0.1), np.log(0.1), np.log(1.0),np.log(0.2)]),modelBias), axis=0)
-    _, grads_computed = log_obsZs_giv_par_with_grad(initial_theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs,gp_deltas_modelOut = True)
-    grads_approx = gradsApprox(initial_theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs,  withPrior= False, gp_deltas_modelOut = True)
+    _, grads_computed = log_obsZs_giv_par_with_grad(initial_theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs,gp_deltas_modelOut = False)
+    grads_approx = gradsApprox(initial_theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs,  withPrior= False, gp_deltas_modelOut = False)
     print('Computed grads are ' + str(grads_computed))
     print('approximated grads are ' + str(grads_approx))
     numerator = np.linalg.norm(grads_approx- grads_computed)                                
