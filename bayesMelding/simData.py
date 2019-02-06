@@ -11,9 +11,9 @@ from scipy import linalg
 import argparse
 import os
 import scipy.stats as stats
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import random
-# from rpy2.robjects import r
+from rpy2.robjects import r
 # from mpl_toolkits.mplot3d import Axes3D
 
 def fun_a_bias(x, a_bias_coefficients = [2., 3., 15.]):
@@ -22,36 +22,35 @@ def fun_a_bias(x, a_bias_coefficients = [2., 3., 15.]):
 	return a_bias
 
 def sim_hatTildZs_With_Plots(SEED = 200, phi_Zs = [0.8], gp_deltas_modelOut = True, phi_deltas_of_modelOut = [0.2], \
-	sigma_Zs = 1.0, sigma_deltas_of_modelOut = 0.5, obs_noi_scale = 0.5, b= 0.6, areal_res = 200, point_res=1000, num_hatZs=200, num_tildZs = 150, \
+	sigma_Zs = 1.0, sigma_deltas_of_modelOut = 0.5, obs_noi_scale = 0.5, b= 0.6, areal_res = 25,  resCoordsPerAreal =10, point_res=1000, num_hatZs=200, num_tildZs = 150, \
 	 a_bias_poly_deg = 2):
 	np.random.seed(SEED)
 	random.seed(SEED)
 	lower_bound = np.array([-12., -6.5])
 	upper_bound = np.array([-3., 3.])
-	x1, x2 = np.meshgrid(np.linspace(lower_bound[0], upper_bound[0], point_res),  
-						 np.linspace(lower_bound[1], upper_bound[1], point_res))
+	x1, x2 = np.meshgrid(np.linspace(lower_bound[0], upper_bound[0], areal_res * resCoordsPerAreal),  
+						 np.linspace(lower_bound[1], upper_bound[1], areal_res * resCoordsPerAreal))
 	#obtain coordinates for each area
-	res_per_areal = point_res/areal_res
-	res_per_areal = int(res_per_areal)
+	res_per_areal = resCoordsPerAreal # this res_per_areal is for coordinates for each of the areal_res(25) areals
 	
-	# areal_coordinate = []
-	# for i in range(areal_res):
-	# 	tmp0 = [np.vstack([x1[i*res_per_areal:(i+1)*res_per_areal, j*res_per_areal:(j+1)*res_per_areal].ravel(), x2[i*res_per_areal:(i+1)*res_per_areal, j*res_per_areal:(j+1)*res_per_areal].ravel()]).T for j in range(areal_res)]
-	# 	areal_coordinate.append(tmp0)
-	# areal_coordinate = np.array(list(chain.from_iterable(areal_coordinate)))
-	# all_X_tildZs = areal_coordinate
+	areal_coordinate = []
+	for i in range(areal_res):
+		tmp0 = [np.vstack([x1[i*res_per_areal:(i+1)*res_per_areal, j*res_per_areal:(j+1)*res_per_areal].ravel(), x2[i*res_per_areal:(i+1)*res_per_areal, j*res_per_areal:(j+1)*res_per_areal].ravel()]).T for j in range(areal_res)]
+		areal_coordinate.append(tmp0)
+	areal_coordinate = np.array(list(chain.from_iterable(areal_coordinate)))
+	all_X_tildZs = areal_coordinate
+	print('shape of all_X_tildZs is' + str(all_X_tildZs.shape))
 
-	# output_folder = os.getcwd() + '/dataSimulated/seed' + str(SEED)
-	# if not os.path.exists(output_folder):
-	# 	os.makedirs(output_folder)
-	# output_folder += '/'
-	# print('output_folder for all simulated data is ' + str(output_folder))
+	output_folder = os.getcwd() + '/dataSimulated/seed' + str(SEED)
+	if not os.path.exists(output_folder):
+		os.makedirs(output_folder)
+	output_folder += '/'
+	print('output_folder for all simulated data is ' + str(output_folder))
 
-	# #save all the areal coordinates
-	# # all_X_tildZs_out = open('dataSimGpDeltas/all_X_tildZs.pickle', 'wb')
-	# all_X_tildZs_out = open(output_folder + 'all_X_tildZs.pickle', 'wb')
-	# pickle.dump(areal_coordinate, all_X_tildZs_out)
-	# all_X_tildZs_out.close()
+	#save all the areal coordinates
+	all_X_tildZs_out = open(output_folder + 'all_X_tildZs.pickle', 'wb')
+	pickle.dump(areal_coordinate, all_X_tildZs_out)
+	all_X_tildZs_out.close()
 
 	# # #generate Zs 
 	# # X = np.vstack([x1.ravel(), x2.ravel()]).T
@@ -60,65 +59,76 @@ def sim_hatTildZs_With_Plots(SEED = 200, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	# # l_chol_cov = np.linalg.cholesky(cov)
 	# # all_y_Zs = np.dot(l_chol_cov, np.random.normal(size=[num_Zs, 1]).reshape(num_Zs))
 	
-	# #when point_res = 1000, load data from random fields outputs (Zs) implemented in R
-	# r.load('dataRsimulated/rfSimDataSEED' + str(SEED) + '.RData')
-	# all_y_Zs = r['rfSimData']
-	# all_y_Zs = np.array(all_y_Zs)
+	#when point_res = 1000, load data from random fields outputs (Zs) implemented in R
+	r.load('dataRsimulated/rfSimDataSEED' + str(SEED) + '.RData')
+	all_y_Zs = r['rfSimData']
+	all_y_Zs = np.array(all_y_Zs)
+	print('shape of all_y_Zs is ' + str(all_y_Zs.shape))
+
+	nparam_density = stats.kde.gaussian_kde(all_y_Zs)
+	x = np.linspace(-3, 3, 200)
+	# x = np.linspace(0, 50, 200)
+	nparam_density = nparam_density(x)
+
+	# parametric fit: assume normal distribution
+	loc_param, scale_param = stats.norm.fit(all_y_Zs)
+	param_density = stats.norm.pdf(x, loc=loc_param, scale=scale_param)
 
 
-	# nparam_density = stats.kde.gaussian_kde(all_y_Zs)
-	# x = np.linspace(-3, 3, 200)
-	# # x = np.linspace(0, 50, 200)
-	# nparam_density = nparam_density(x)
-
-	# # parametric fit: assume normal distribution
-	# loc_param, scale_param = stats.norm.fit(all_y_Zs)
-	# param_density = stats.norm.pdf(x, loc=loc_param, scale=scale_param)
-
-
-	# # fig, ax = plt.subplots(figsize=(10, 6))
-	# # ax.hist(all_y_Zs, bins=30, normed=True)
-	# # ax.plot(x, nparam_density, 'r-', label='non-parametric density (smoothed by Gaussian kernel)')
-	# # ax.plot(x, param_density, 'k--', label='parametric density')
-	# # # ax.set_ylim([0, 0.15])
-	# # ax.legend(loc='best')
-	# # plt.savefig(output_folder + 'originSimDataPointRes' + str(point_res) + '.png')
-	# # # plt.show()
-	# # plt.close()
-	# # generate gamma distributed Zs
-	# pnorm_Zs = stats.norm.cdf(all_y_Zs)
-	# #alpha, loc, scale from gamma fit of FR data of Imogen
+	# fig, ax = plt.subplots(figsize=(10, 6))
+	# ax.hist(all_y_Zs, bins=30, normed=True)
+	# ax.plot(x, nparam_density, 'r-', label='non-parametric density (smoothed by Gaussian kernel)')
+	# ax.plot(x, param_density, 'k--', label='parametric density')
+	# # ax.set_ylim([0, 0.15])
+	# ax.legend(loc='best')
+	# plt.savefig(output_folder + 'originSimDataPointRes' + str(point_res) + '.png')
+	# # plt.show()
+	# plt.close()
+	# generate gamma distributed Zs
+	pnorm_Zs = stats.norm.cdf(all_y_Zs)
+	#alpha, loc, scale from gamma fit of FR data of Imogen   - looks like a Gaussian
 	# alpha = 65.4
 	# loc = -18.5
 	# scale = 0.7
-	# rv = stats.gamma(alpha, loc, scale)
-	# all_y_Zs = rv.ppf(pnorm_Zs)
 
-	# nparam_density = stats.kde.gaussian_kde(all_y_Zs)
-	# # x = np.linspace(-3, 3, 200)
-	# x = np.linspace(0, 50, 200)
-	# nparam_density = nparam_density(x)
+	#alpha, loc, scale - more skewed distribution
+	# input_folder = os.getcwd() + '/dataRsimNoFrGammaTransformArealRes25Cods100butArealZs100/seed' + str(SEED)
+	# all_y_Zsold_in = open(input_folder + '/all_y_Zs.pickle', 'rb')
+	# all_y_Zsold = pickle.load(all_y_Zsold_in)
+	# alpha,loc,scale = stats.gamma.fit(all_y_Zsold)
+	# print(str((alpha, loc, scale)))
+	alpha = 5.4
+	loc = 0.
+	scale = 4.8
+	rv = stats.gamma(alpha, loc, scale)
+	all_y_Zs = rv.ppf(pnorm_Zs)
 
-	# # parametric fit: assume normal distribution
-	# loc_param, scale_param = stats.norm.fit(all_y_Zs)
-	# param_density = stats.norm.pdf(x, loc=loc_param, scale=scale_param)
+	nparam_density = stats.kde.gaussian_kde(all_y_Zs)
+	# x = np.linspace(-3, 3, 200)
+	x = np.linspace(0, 50, 200)
+	nparam_density = nparam_density(x)
 
-	# alpha,loc,scale = stats.gamma.fit(all_y_Zs)
-	# gamma_density = stats.gamma.pdf(x, alpha, loc, scale)
+	# parametric fit: assume normal distribution
+	loc_param, scale_param = stats.norm.fit(all_y_Zs)
+	param_density = stats.norm.pdf(x, loc=loc_param, scale=scale_param)
+
+	alpha,loc,scale = stats.gamma.fit(all_y_Zs)
+	gamma_density = stats.gamma.pdf(x, alpha, loc, scale)
 
 
-	# # fig, ax = plt.subplots(figsize=(10, 6))
-	# # ax.hist(all_y_Zs, bins=30, normed=True)
-	# # ax.plot(x, nparam_density, 'r-', label='non-parametric density (smoothed by Gaussian kernel)')
-	# # ax.plot(x, param_density, 'k--', label='parametric density')
-	# # ax.plot(x, gamma_density, 'g-', label='gamma density')
-	# # # ax.set_ylim([0, 0.15])
-	# # ax.legend(loc='best')
-	# # plt.savefig(output_folder + 'gammaTransformedWithMean.png')
-	# # # plt.show()
-	# # plt.close()
+	fig, ax = plt.subplots(figsize=(10, 6))
+	ax.hist(all_y_Zs, bins=30, normed=True)
+	ax.plot(x, nparam_density, 'r-', label='non-parametric density (smoothed by Gaussian kernel)')
+	ax.plot(x, param_density, 'k--', label='parametric density')
+	ax.plot(x, gamma_density, 'g-', label='gamma density')
+	# ax.set_ylim([0, 0.15])
+	ax.legend(loc='best')
+	plt.savefig(output_folder + 'gammaTransformedWithMean.png')
+	plt.show()
+	plt.close()
 
-	# all_y_Zs = all_y_Zs - np.mean(all_y_Zs)
+
+	all_y_Zs = all_y_Zs - np.mean(all_y_Zs)
 
 	# # fig = plt.figure()
 	# # ax = Axes3D(fig)
@@ -131,59 +141,65 @@ def sim_hatTildZs_With_Plots(SEED = 200, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	# # plt.show()
 	# # plt.close()
 
-	# all_y_Zs_out = open(output_folder + 'all_y_Zs.pickle', 'wb')
-	# # all_y_Zs_out = open('dataSimGpDeltas/all_y_Zs.pickle', 'wb')
-	# pickle.dump(all_y_Zs, all_y_Zs_out)
-	# all_y_Zs_out.close()
+	all_y_Zs_out = open(output_folder + 'all_y_Zs.pickle', 'wb')
+	# all_y_Zs_out = open('dataSimGpDeltas/all_y_Zs.pickle', 'wb')
+	pickle.dump(all_y_Zs, all_y_Zs_out)
+	all_y_Zs_out.close()
 
-	# nparam_density = stats.kde.gaussian_kde(all_y_Zs)
-	# x = np.linspace(-20, 20, 200)
-	# # x = np.linspace(0, 50, 200)
-	# nparam_density = nparam_density(x)
-	# # parametric fit: assume normal distribution
-	# loc_param, scale_param = stats.norm.fit(all_y_Zs)
-	# print('norm scale is ' + str(scale_param))
+	nparam_density = stats.kde.gaussian_kde(all_y_Zs)
+	x = np.linspace(-20, 20, 200)
+	# x = np.linspace(0, 50, 200)
+	nparam_density = nparam_density(x)
+	# parametric fit: assume normal distribution
+	loc_param, scale_param = stats.norm.fit(all_y_Zs)
+	print('norm scale is ' + str(scale_param))
 	
-	# param_density = stats.norm.pdf(x, loc=loc_param, scale=scale_param)
+	param_density = stats.norm.pdf(x, loc=loc_param, scale=scale_param)
 
-	# alpha,loc,scale = stats.gamma.fit(all_y_Zs)
-	# gamma_density = stats.gamma.pdf(x, alpha, loc, scale)
+	alpha,loc,scale = stats.gamma.fit(all_y_Zs)
+	gamma_density = stats.gamma.pdf(x, alpha, loc, scale)
 
 
-	# # fig, ax = plt.subplots(figsize=(10, 6))
-	# # ax.hist(all_y_Zs, bins=30, normed=True)
-	# # ax.plot(x, nparam_density, 'r-', label='non-parametric density (smoothed by Gaussian kernel)')
-	# # ax.plot(x, param_density, 'k--', label='parametric density')
-	# # ax.plot(x, gamma_density, 'g-', label='gamma density')
-	# # # ax.set_ylim([0, 0.15])
-	# # ax.legend(loc='best')
-	# # plt.savefig(output_folder + 'gammaTransformedNoMean.png')
-	# # # plt.show()
-	# # plt.close()
+	fig, ax = plt.subplots(figsize=(10, 6))
+	ax.hist(all_y_Zs, bins=30, normed=True)
+	ax.plot(x, nparam_density, 'r-', label='non-parametric density (smoothed by Gaussian kernel)')
+	ax.plot(x, param_density, 'k--', label='parametric density')
+	ax.plot(x, gamma_density, 'g-', label='gamma density')
+	# ax.set_ylim([0, 0.15])
+	ax.legend(loc='best')
+	plt.savefig(output_folder + 'gammaTransformedNoMean.png')
+	plt.show()
+	plt.close()
 
-	# all_X_Zs = np.vstack([x1.ravel(), x2.ravel()]).T
-	# all_X_Zs_out = open(output_folder + 'all_X_Zs.pickle', 'wb')
-	# # all_X_Zs_out = open('dataSimGpDeltas/all_X_Zs.pickle', 'wb')
-	# pickle.dump(all_X_Zs, all_X_Zs_out)
-	# all_X_Zs_out.close()
+	x1, x2 = np.meshgrid(np.linspace(lower_bound[0], upper_bound[0], point_res),  
+						 np.linspace(lower_bound[1], upper_bound[1], point_res))
 
-	# #generate the tildZs = b * average of the areal Zs
-	# mat_Zs = all_y_Zs.reshape(point_res, point_res)
-	# areal_Zs = []
-	# for i in range(areal_res):
-	# 	tmp = [mat_Zs[i*res_per_areal:(i+1)*res_per_areal, j*res_per_areal:(j+1)*res_per_areal] for j in range(areal_res)]
-	# 	areal_Zs.append(tmp)
-	# areal_Zs = np.array(list(chain.from_iterable(areal_Zs)))
+	all_X_Zs = np.vstack([x1.ravel(), x2.ravel()]).T
+	all_X_Zs_out = open(output_folder + 'all_X_Zs.pickle', 'wb')
+	# all_X_Zs_out = open('dataSimGpDeltas/all_X_Zs.pickle', 'wb')
+	pickle.dump(all_X_Zs, all_X_Zs_out)
+	all_X_Zs_out.close()
 
-	# areal_Zs_out =  open(output_folder + 'areal_Zs.pickle', 'wb')
-	# # areal_Zs_out =  open('dataSimGpDeltas/areal_Zs.pickle', 'wb')
-	# pickle.dump(areal_Zs, areal_Zs_out)
-	# areal_Zs_out.close()
+	#generate the tildZs = b * average of the areal Zs
+	res_per_areal = int(point_res/areal_res) # this res_per_areal is for Zs, in this case is 1000/25 = 40
+	mat_Zs = all_y_Zs.reshape(point_res, point_res)
+	areal_Zs = []
+	for i in range(areal_res):
+		tmp = [mat_Zs[i*res_per_areal:(i+1)*res_per_areal, j*res_per_areal:(j+1)*res_per_areal] for j in range(areal_res)]
+		areal_Zs.append(tmp)
+	areal_Zs = np.array(list(chain.from_iterable(areal_Zs)))
+	print('shape of areal_Zs is' + str(areal_Zs.shape))
 
-	# all_y_tildZs = np.array([np.mean(areal_Zs[i])  for i in range(len(areal_Zs))])
-	# all_y_tildZs_out = open(output_folder + 'all_y_tildZs.pickle', 'wb')
-	# pickle.dump(all_y_tildZs, all_y_tildZs_out)
-	# all_y_tildZs_out.close()
+	areal_Zs_out =  open(output_folder + 'areal_Zs.pickle', 'wb')
+	# areal_Zs_out =  open('dataSimGpDeltas/areal_Zs.pickle', 'wb')
+	pickle.dump(areal_Zs, areal_Zs_out)
+	areal_Zs_out.close()
+
+	all_y_tildZs = np.array([np.mean(areal_Zs[i])  for i in range(len(areal_Zs))])
+	print('shape of all_y_tildZs is' + str(all_y_tildZs.shape))
+	all_y_tildZs_out = open(output_folder + 'all_y_tildZs.pickle', 'wb')
+	pickle.dump(all_y_tildZs, all_y_tildZs_out)
+	all_y_tildZs_out.close()
 
 	# if gp_deltas_modelOut:
 	#     #generate delta(s) of model output tildZofs
@@ -228,18 +244,18 @@ def sim_hatTildZs_With_Plots(SEED = 200, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	  
 	# save all the tildZs
 
-	input_folder = os.getcwd() + '/dataSimulated/seed' + str(SEED)
-	all_X_Zs_in = open(input_folder + '/all_X_Zs.pickle', 'rb')
-	all_X_Zs = pickle.load(all_X_Zs_in)
+	# input_folder = os.getcwd() + '/dataSimulated/seed' + str(SEED)
+	# all_X_Zs_in = open(input_folder + '/all_X_Zs.pickle', 'rb')
+	# all_X_Zs = pickle.load(all_X_Zs_in)
 
-	all_y_Zs_in = open(input_folder + '/all_y_Zs.pickle', 'rb')
-	all_y_Zs = pickle.load(all_y_Zs_in)
+	# all_y_Zs_in = open(input_folder + '/all_y_Zs.pickle', 'rb')
+	# all_y_Zs = pickle.load(all_y_Zs_in)
 
-	all_X_tildZs_in = open(input_folder + '/all_X_tildZs.pickle', 'rb')
-	all_X_tildZs = pickle.load(all_X_tildZs_in)
+	# all_X_tildZs_in = open(input_folder + '/all_X_tildZs.pickle', 'rb')
+	# all_X_tildZs = pickle.load(all_X_tildZs_in)
 
-	all_y_tildZs_in = open(input_folder + '/all_y_tildZs.pickle', 'rb')
-	all_y_tildZs = pickle.load(all_y_tildZs_in)
+	# all_y_tildZs_in = open(input_folder + '/all_y_tildZs.pickle', 'rb')
+	# all_y_tildZs = pickle.load(all_y_tildZs_in)
 	
 	lower_bound = np.array([-12., -6.5])
 	upper_bound = np.array([-3., 3.])
@@ -459,7 +475,7 @@ def gen_simData(SEED=200, num_hatZs=200,  obs_noi_scale = 0.1, moIncreNum=50):
 		plt.figure()
 		plt.scatter(xtil1, xtil2)
 		plt.savefig(output_folder + 'rndmodelOut_' + str(numMO[idxNumMo]) + '.png')
-		# plt.show()
+		plt.show()
 		plt.close()
 
 		areal_hatZs = []

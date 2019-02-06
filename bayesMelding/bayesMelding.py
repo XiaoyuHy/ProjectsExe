@@ -1266,7 +1266,7 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
     if numMo == 50:
         # rounds =2
         for round in range(rounds):
-            res_tmp = optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat,seed, numMo, round)
+            res_tmp = optim_RndStart1(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat,seed, numMo, round)
             # print 'res_tmp is ' + str(res_tmp)
             res.append(res_tmp)
         res = np.array(res)
@@ -1545,9 +1545,11 @@ if __name__ == '__main__':
         input_folder = os.getcwd() + '/dataSimulated/seed' + str(args.SEED) + '/'
         all_X_Zs_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
         all_X_Zs = pickle.load(all_X_Zs_in) 
+        print('shape of all_X_Zs is ' + str(all_X_Zs.shape))
 
         all_y_Zs_in = open(input_folder + 'all_y_Zs.pickle', 'rb')
         all_y_Zs = pickle.load(all_y_Zs_in) 
+        print('shape of all_y_Zs is ' + str(all_y_Zs.shape))
 
         X_test = all_X_Zs
         y_test = all_y_Zs

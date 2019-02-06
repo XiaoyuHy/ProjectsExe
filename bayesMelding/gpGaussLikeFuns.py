@@ -1059,7 +1059,8 @@ if __name__ == '__main__':
         y_train = y_hatZs
 
         # input_folder = os.getcwd() + '/dataRsimGammaTransformErrorInZtilde/seed' + str(args.SEED) + '/'
-        input_folder = os.getcwd() + '/dataRsimNoFrGammaTransformArealRes25Cods100butArealZs100/seed' + str(args.SEED) + '/'
+        # input_folder = os.getcwd() + '/dataRsimNoFrGammaTransformArealRes25Cods100butArealZs100/seed' + str(args.SEED) + '/'
+        input_folder = os.getcwd() + '/dataSimulated/seed' + str(args.SEED) + '/'
         all_X_Zs_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
         all_X_Zs = pickle.load(all_X_Zs_in) 
 
