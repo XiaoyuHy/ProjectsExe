@@ -1021,7 +1021,7 @@ def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withP
         return [np.array(tmp_res['x']), tmp_res['fun'], np.array(tmp_res['hess_inv']), tmp_res['success'], tmp_res['message']]
 
 def optim_RndStart1(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat, seed, numMo, round):
-    print('Starting the ' + str(round) + ' round of optimisation in optim_RndStart')
+    print('Starting the ' + str(round) + ' round of optimisation in optim_RndStart1')
     count = 0
     max_repeat = 3
     res = []

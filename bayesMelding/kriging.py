@@ -287,7 +287,154 @@ def gradsApprox(theta, X_hatZs, y_hatZs,  withPrior= False,  rbf = True, OMEGA =
 #     else:
 #         print ("\033[92m" + "Computing the gradients works perfectly fine! difference = " + str(difference) + "\033[0m")
     
-#     return difference    
+#     return difference 
+def optimise_minBFGS_reps(X_hatZs, y_hatZs, withPrior, useGradsFlag = False, repeat=3, seed =188, zeroMeanHatZs=False, method='L-BFGS-B', rbf=True, OMEGA = 1e-6, \
+    bounds = ((-5, 5), (-5, 5), (-5, 5))): 
+    print('starting optimising when withPrior is ' + str(withPrior)  + '& useGradsFlag is ' + str(useGradsFlag)) 
+    if rbf:
+        num_par=1
+    else:
+        num_par=X_hatZs.shape[1]  
+    res = []
+    count = 0
+    LBFGSB_status = False
+   
+    while count != repeat:
+        try:#find one intial value for which the optimisation works
+            if zeroMeanHatZs:
+                initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                np.log(np.random.gamma(1.2, 1./0.6, 1))), axis=0)
+                bounds = bounds
+            else:
+                initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.zeros(3)), axis=0)
+                bounds = ((-5, 5), (-5, 5), (-5, 5), (-100, 100), (-100, 100), (-100, 100))
+            print('bouds is ' + str(bounds))
+            print('initial theta when withPrior is ' + str(withPrior) + '& useGradsFlag is ' + str(useGradsFlag) +  ' :' + str(initial_theta))
+            if useGradsFlag:
+                tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
+                           x0=initial_theta, method='BFGS',
+                           jac=True,
+                           args=(X_hatZs, y_hatZs, withPrior, zeroMeanHatZs),
+                           options={'maxiter': 2000, 'disp': False})
+            else:
+                tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
+                               x0=initial_theta, method=method,
+                               jac=False, bounds = bounds,
+                               args=(X_hatZs, y_hatZs, withPrior, zeroMeanHatZs),
+                               options={'maxiter': 2000, 'disp': False})
+            print('The ' + str(count) + ' round of optimisation')
+        except:
+            continue
+        if tmp_res['fun'] is not None: # if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
+            temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
+            np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
+            res.append(temp_res)
+            if zeroMeanHatZs:
+                parameters = np.exp(np.array(tmp_res['x']))
+            else:
+                parameters = (np.exp(np.array(tmp_res['x'])[:3]), np.array(tmp_res['x'])[3:])
+            logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, withPrior, zeroMeanHatZs)
+            print('grads at theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(grads_at_resOptim))
+            flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
+            # if gradients from the BFGS optimisation is zero, break out of the loop
+            if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
+                print('BFGS optmisation converged successfully at the '+ str(count) + ' round of optimisation.')
+                print('minus_log_like for repeat ' + str(count)+ ' with BFGS is ' + str(tmp_res['fun']))
+                print('parameters after optimisation withPrior is ' + str(withPrior) + \
+                ' with BFGS :'  + str(parameters))
+                count += 1        
+        else:# if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
+            continue 
+    res = np.array(res)
+    res = res.T
+    print('minus_log_like for repeat ' + str(repeat) + ' is ' + str(res[1, :]))
+    i = np.argmin(res[1,:])
+    print('parameters after optimisation with BFGS is ' + str(np.exp(np.array(res[0, :][i]))))
+    return [np.array(res[0, :][i]), np.array(res[2, :][i])]
+
+def optimise_minLBFGS_BFGS_reps(X_hatZs, y_hatZs, withPrior, useGradsFlag = False, repeat=3, seed =188, zeroMeanHatZs=False, method='L-BFGS-B', rbf=True, OMEGA = 1e-6, \
+    bounds = ((-5, 5), (-5, 5), (-5, 5))): 
+    print('starting optimising when withPrior is ' + str(withPrior)  + '& useGradsFlag is ' + str(useGradsFlag)) 
+    if rbf:
+        num_par=1
+    else:
+        num_par=X_hatZs.shape[1]  
+    res = []
+    count = 0
+    LBFGSB_status = False
+   
+    while count != repeat:
+        try:#find one intial value for which the optimisation works
+            if zeroMeanHatZs:
+                initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                np.log(np.random.gamma(1.2, 1./0.6, 1))), axis=0)
+                bounds = bounds
+            else:
+                initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.zeros(3)), axis=0)
+                bounds = ((-5, 5), (-5, 5), (-5, 5), (-100, 100), (-100, 100), (-100, 100))
+            print('bouds is ' + str(bounds))
+            print('initial theta when withPrior is ' + str(withPrior) + '& useGradsFlag is ' + str(useGradsFlag) +  ' :' + str(initial_theta))
+            if useGradsFlag:
+                tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
+                               x0=initial_theta, method=method,
+                               jac=True, bounds = bounds,
+                               args=(X_hatZs, y_hatZs, withPrior, zeroMeanHatZs),
+                               options={'maxiter': 2000, 'disp': False})
+            else:
+                tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
+                               x0=initial_theta, method=method,
+                               jac=False, bounds = bounds,
+                               args=(X_hatZs, y_hatZs, withPrior, zeroMeanHatZs),
+                               options={'maxiter': 2000, 'disp': False})
+            print('The ' + str(count) + ' round of optimisation')
+        except:
+            continue
+        if tmp_res['fun'] is not None: # if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
+            temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv'].todense()), np.copy(tmp_res['success']), \
+            np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
+            res.append(temp_res)
+            print('theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(tmp_res['x']))
+            if zeroMeanHatZs:
+                parameters = np.exp(np.array(tmp_res['x']))
+            else:
+                parameters = (np.exp(np.array(tmp_res['x'])[:3]), np.array(tmp_res['x'])[3:])
+            logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, withPrior, zeroMeanHatZs)
+            print('grads at theta from the ' + str(count) + ' round of optimisation with LBFGSB is ' + str(grads_at_resOptim))
+
+            # ****** The following are optimisation using BFGS method ******
+            print('initial theta from LBFGSB optimisation for BFGS is ' + str(tmp_res['x']))
+            tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
+                           x0=tmp_res['x'], method='BFGS',
+                           jac=True,
+                           args=(X_hatZs, y_hatZs, withPrior, zeroMeanHatZs),
+                           options={'maxiter': 2000, 'disp': False})
+            print('theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(tmp_res['x']))
+            if zeroMeanHatZs:
+                parameters = np.exp(np.array(tmp_res['x']))
+            else:
+                parameters = (np.exp(np.array(tmp_res['x'])[:3]), np.array(tmp_res['x'])[3:])
+            logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, withPrior, zeroMeanHatZs)
+            print('grads at theta from the ' + str(count) + ' round of optimisation with BFGS is ' + str(grads_at_resOptim))
+            flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
+            # if gradients from the BFGS optimisation is zero, break out of the loop
+            if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
+                print('BFGS optmisation converged successfully at the '+ str(count) + ' round of optimisation.')
+                print('minus_log_like for repeat ' + str(count)+ ' with BFGS is ' + str(tmp_res['fun']))
+                print('parameters after optimisation withPrior is ' + str(withPrior) + \
+                ' with BFGS :'  + str(parameters))
+                count += 1        
+        else:# if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
+            continue 
+    res = np.array(res)
+    res = res.T
+    print('minus_log_like for repeat ' + str(repeat) + ' is ' + str(res[1, :]))
+    i = np.argmin(res[1,:])
+    print('parameters after optimisation with BFGS is ' + str(np.exp(np.array(res[0, :][i]))))
+    return [np.array(res[0, :][i]), np.array(res[2, :][i])]
+    
+    # return [np.array(tmp_res['x']), np.array(tmp_res['hess_inv'])]   
 
 def optimise(X_hatZs, y_hatZs, withPrior, useGradsFlag = False, repeat=3, seed =188, zeroMeanHatZs=False, method='L-BFGS-B', rbf=True, OMEGA = 1e-6, \
     bounds = ((-5, 5), (-5, 5), (-5, 5))): 
@@ -444,7 +591,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
         else:
             output_folder = os.getcwd() + '/dataSimulated/kriging/numObs_200/seed' + str(SEED) 
     else:
-        output_folder = 'kriging/seed' + str(SEED) 
+        output_folder = 'DataImogenFrGridMoNotCentre/krigingTest/seed' + str(SEED) 
 
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -632,86 +779,86 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, crossValFlag = 
     # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Krig_predic_surf.png')
     # plt.close()
     #*******************************comupute the prediction part for in sample ntrain test data points under each theta **********************************************************
-    X_test = X_train
-    y_test = y_train
-    ntest = X_test.shape[0]
-    K_star_star = np.zeros((ntest,1))
-    K_star_hatZs = cov_mat_xy(X_train, X_test, np.exp(log_sigma_Zs), np.exp(log_phi_Zs)) # is a matrix of size (n_train, n_test)
-    K_star_hatZs = K_star_hatZs.T
-    K_star = K_star_hatZs
+    # X_test = X_train
+    # y_test = y_train
+    # ntest = X_test.shape[0]
+    # K_star_star = np.zeros((ntest,1))
+    # K_star_hatZs = cov_mat_xy(X_train, X_test, np.exp(log_sigma_Zs), np.exp(log_phi_Zs)) # is a matrix of size (n_train, n_test)
+    # K_star_hatZs = K_star_hatZs.T
+    # K_star = K_star_hatZs
     
-    if zeroMeanHatZs:
-        mu_test = np.zeros(len(y_test))
-    else:
-        n_row = X_test.shape[0]
-        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
-        X_test_extend = np.hstack((X_test, tmp0))
-        mu_test = np.dot(X_test_extend, mu_hatZs_coeffis)
+    # if zeroMeanHatZs:
+    #     mu_test = np.zeros(len(y_test))
+    # else:
+    #     n_row = X_test.shape[0]
+    #     tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+    #     X_test_extend = np.hstack((X_test, tmp0))
+    #     mu_test = np.dot(X_test_extend, mu_hatZs_coeffis)
 
 
-    mu_star = mu_test + np.dot(K_star, u)
+    # mu_star = mu_test + np.dot(K_star, u)
 
-    rmse = np.sqrt(np.mean((y_test - mu_star)**2))
+    # rmse = np.sqrt(np.mean((y_test - mu_star)**2))
 
-    print('In-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
+    # print('In-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
 
-    rmse_out = open(output_folder + 'rmse_krig_inSample.pkl', 'wb')
-    pickle.dump(rmse, rmse_out) 
-    rmse_out.close()
+    # rmse_out = open(output_folder + 'rmse_krig_inSample.pkl', 'wb')
+    # pickle.dump(rmse, rmse_out) 
+    # rmse_out.close()
  
-    if not crossValFlag:
-        index = np.arange(len(y_test))
-        standardised_y_estimate = (mu_star - mu_test)/np.exp(log_obs_noi_scale)
-        # plt.figure()
-        # plt.scatter(index, standardised_y_estimate, facecolors='none',  edgecolors='k', linewidths=1.2)
-        # # plt.scatter(index, standardised_y_etstimate, c='k')
-        # plt.axhline(0, color='black', lw=1.2, ls ='-')
-        # plt.axhline(2, color='black', lw=1.2, ls =':')
-        # plt.axhline(-2, color='black', lw=1.2, ls =':')
-        # plt.xlabel('Index')
-        # plt.ylabel('Standardised residual')
-        # plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_krig_inSample.png')
-        # # plt.show()
-        # plt.close()
+    # if not crossValFlag:
+    #     index = np.arange(len(y_test))
+    #     standardised_y_estimate = (mu_star - mu_test)/np.exp(log_obs_noi_scale)
+    #     # plt.figure()
+    #     # plt.scatter(index, standardised_y_estimate, facecolors='none',  edgecolors='k', linewidths=1.2)
+    #     # # plt.scatter(index, standardised_y_etstimate, c='k')
+    #     # plt.axhline(0, color='black', lw=1.2, ls ='-')
+    #     # plt.axhline(2, color='black', lw=1.2, ls =':')
+    #     # plt.axhline(-2, color='black', lw=1.2, ls =':')
+    #     # plt.xlabel('Index')
+    #     # plt.ylabel('Standardised residual')
+    #     # plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_krig_inSample.png')
+    #     # # plt.show()
+    #     # plt.close()
 
-        # sm.qqplot(standardised_y_estimate, line='45')
-        # plt.savefig(output_folder + 'SEED' + str(SEED) + 'normalQQ_krig_inSample.png')
-        # # plt.show()
-        # plt.close()
+    #     # sm.qqplot(standardised_y_estimate, line='45')
+    #     # plt.savefig(output_folder + 'SEED' + str(SEED) + 'normalQQ_krig_inSample.png')
+    #     # # plt.show()
+    #     # plt.close()
     
-    LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
-    for i in range(ntest):
-        K_star_star[i] = cov_matrix(X_test[i].reshape(1, 2), np.exp(log_sigma_Zs), np.exp(log_phi_Zs))
+    # LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
+    # for i in range(ntest):
+    #     K_star_star[i] = cov_matrix(X_test[i].reshape(1, 2), np.exp(log_sigma_Zs), np.exp(log_phi_Zs))
     
-    vstar = K_star_star - np.sum(LKstar**2, axis=0).reshape(ntest,1) 
-    vstar[vstar < 0] = 1e-9
-    vstar = vstar.reshape(ntest, )
-    # print('In sample estimated variance is ' + str(vstar))
+    # vstar = K_star_star - np.sum(LKstar**2, axis=0).reshape(ntest,1) 
+    # vstar[vstar < 0] = 1e-9
+    # vstar = vstar.reshape(ntest, )
+    # # print('In sample estimated variance is ' + str(vstar))
 
-    avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
+    # avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
 
-    print('In sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var)) 
+    # print('In sample average width of the prediction variance for seed ' + str(SEED) + ' is ' + str(avg_width_of_predic_var)) 
 
-    avgVar_out = open(output_folder + 'avgVar_krig_inSample.pkl', 'wb')
-    pickle.dump(avg_width_of_predic_var, avgVar_out) 
-    avgVar_out.close()
+    # avgVar_out = open(output_folder + 'avgVar_krig_inSample.pkl', 'wb')
+    # pickle.dump(avg_width_of_predic_var, avgVar_out) 
+    # avgVar_out.close()
 
-    upper_interv_predic = mu_star + 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
-    lower_interv_predic = mu_star - 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+    # upper_interv_predic = mu_star + 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+    # lower_interv_predic = mu_star - 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
 
-    upper_interval_rounded = np.round(upper_interv_predic, 1)
-    lower_interval_rounded = np.round(lower_interv_predic, 1)
-    # print 'rounded upper_interval is ' + str(upper_interval_rounded)
-    # print 'rounded lower_interval is ' + str(lower_interval_rounded)
+    # upper_interval_rounded = np.round(upper_interv_predic, 1)
+    # lower_interval_rounded = np.round(lower_interv_predic, 1)
+    # # print 'rounded upper_interval is ' + str(upper_interval_rounded)
+    # # print 'rounded lower_interval is ' + str(lower_interval_rounded)
 
-    flag_in_confiInterv_r = (y_test >= lower_interval_rounded) & (y_test <= upper_interval_rounded)
-    count_in_confiInterv_r  = np.sum(flag_in_confiInterv_r.astype(int))
-    # print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
-    succRate = count_in_confiInterv_r/np.float(len(y_test))
-    print('In sample prediction accuracy is ' + '{:.1%}'.format(succRate))
+    # flag_in_confiInterv_r = (y_test >= lower_interval_rounded) & (y_test <= upper_interval_rounded)
+    # count_in_confiInterv_r  = np.sum(flag_in_confiInterv_r.astype(int))
+    # # print 'number of estimated parameters within the 95 percent confidence interval with rounding is ' + str(count_in_confiInterv_r)
+    # succRate = count_in_confiInterv_r/np.float(len(y_test))
+    # print('In sample prediction accuracy is ' + '{:.1%}'.format(succRate))
 
-    accuracy_out = open(output_folder + 'predicAccuracy_krig_inSample.pkl', 'wb')
-    pickle.dump(succRate, accuracy_out) 
+    # accuracy_out = open(output_folder + 'predicAccuracy_krig_inSample.pkl', 'wb')
+    # pickle.dump(succRate, accuracy_out) 
     accuracy_out.close()
 
     return succRate
@@ -735,7 +882,7 @@ if __name__ == '__main__':
     p.add_argument('-idxFold', type=int, dest='idxFold', default=9, help='the index for the fold for cross validation')
     p.add_argument('-zeroMeanHatZs', dest='zeroMeanHatZs', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='whether to zero mean for y_hatZs')
-    p.add_argument('-useSimData', dest='useSimData', default=True,  type=lambda x: (str(x).lower() == 'true'), \
+    p.add_argument('-useSimData', dest='useSimData', default=True ,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use simulated data')
     p.add_argument('-grid', dest='grid', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether the predictions are produced for each grid')
     
@@ -743,10 +890,11 @@ if __name__ == '__main__':
     if args.output is None: args.output = os.getcwd()
     if args.usecntryFlag:
         if args.useSimData:
+            # output_folder = args.output + '/dataRsimNoFrGammaTransformArealRes25Cods100butArealZs100/kriging/numObs_' + str(args.numObs) + '/seed' + str(args.SEED) 
             output_folder = args.output + '/dataSimulated/kriging/numObs_' + str(args.numObs) + '/seed' + str(args.SEED) 
             # output_folder = args.output + '/dataSimGpDeltas/kriging/numObs_' + str(args.numObs) + '/seed' + str(args.SEED) 
         else:
-            output_folder = args.output + '/kriging/seed' + str(args.SEED) 
+            output_folder = args.output + '/DataImogenFrGridMoNotCentre/kriging/seed' + str(args.SEED) 
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     output_folder += '/'
@@ -755,10 +903,11 @@ if __name__ == '__main__':
     start = default_timer()
     np.random.seed(args.SEED)
     if args.useSimData: 
-        input_folder = os.getcwd() + '/dataRsimGammaTransformErrorInZtilde/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
-        # input_folder = os.getcwd() + '/dataSimGpDeltas/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+        # input_folder = os.getcwd() + '/dataRsimGammaTransformErrorInZtilde/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+        # input_folder = os.getcwd() + '/dataRsimNoFrGammaTransformArealRes25Cods100butArealZs100/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+        input_folder = os.getcwd() + '/dataSimulated/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
     else:
-        input_folder = 'Data/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
+        input_folder = 'DataImogenFrGridMoNotCentre/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
         + '/seed' + str(args.SEED) + '/'
         
     if args.usecntryFlag:
@@ -786,16 +935,24 @@ if __name__ == '__main__':
             else:
                 y_hatZs_in = open(input_folder + 'y_hatZs_withMean.pkl', 'rb')
     
-            y_hatZs = pickle.load(y_hatZs_in) 
-            
+            y_hatZs = pickle.load(y_hatZs_in)
 
+            if args.useSimData: 
+                X_train = X_hatZs
+                y_train = y_hatZs
+            else:
+                X_train = X_hatZs[:-28, :]
+                y_train = y_hatZs[:-28]
+                print(X_train.shape)
+            
             areal_hatZs_in = open(input_folder + 'areal_hatZs.pkl', 'rb')
             areal_hatZs = pickle.load(areal_hatZs_in)
+
     if not args.grid:      
         if args.crossValFlag:   
             mu, cov = optimise(X_train, y_train, args.withPrior, args.useGradsFlag, args.repeat, args.SEED, args.zeroMeanHatZs)
         else:   
-            mu, cov = optimise(X_hatZs, y_hatZs, args.withPrior, args.useGradsFlag, args.repeat, args.SEED, args.zeroMeanHatZs)
+            mu, cov = optimise_minBFGS_reps(X_train, y_train, args.withPrior, args.useGradsFlag, args.repeat, args.SEED, args.zeroMeanHatZs)
 
         end = default_timer()
         print('running time for optimisation is ' + str(end - start) + ' seconds')
@@ -846,7 +1003,8 @@ if __name__ == '__main__':
         pickle.dump(res, res_out)
         res_out.close()
     else:
-        input_folder = 'dataRsimGammaTransformErrorInZtilde/kriging/numObs_' + str(args.numObs) + '/seed' + str(args.SEED) + '/'
+        # input_folder = 'dataRsimNoFrGammaTransformArealRes25Cods100butArealZs100/kriging/numObs_' + str(args.numObs) + '/seed' + str(args.SEED) + '/'
+        input_folder = 'dataSimulated/kriging/numObs_' + str(args.numObs) + '/seed' + str(args.SEED) + '/'
         resOptim_in = open(input_folder + 'resOptim_krig.pkl', 'rb')
         resOptim = pickle.load(resOptim_in)
         mu = resOptim['mu']
@@ -861,7 +1019,9 @@ if __name__ == '__main__':
             X_train = X_hatZs
             y_train = y_hatZs
             # print(X_train.shape, y_train.shape)
-            input_folder = os.getcwd() + '/dataRsimGammaTransformErrorInZtilde/seed' + str(args.SEED) + '/'
+            # input_folder = os.getcwd() + '/dataRsimGammaTransformErrorInZtilde/seed' + str(args.SEED) + '/'
+            # input_folder = os.getcwd() + '/dataRsimNoFrGammaTransformArealRes25Cods100butArealZs100/seed' + str(args.SEED) + '/'
+            input_folder = os.getcwd() + '/dataSimulated/seed' + str(args.SEED) + '/'
             all_X_Zs_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
             all_X_Zs = pickle.load(all_X_Zs_in) 
 
@@ -871,10 +1031,10 @@ if __name__ == '__main__':
             X_test = all_X_Zs
             y_test = all_y_Zs
         else:
-            X_train = X_hatZs[:-50, :]
-            X_test = X_hatZs[-50:, :]
-            y_train = y_hatZs[:-50]
-            y_test = y_hatZs[-50:]
+            X_train = X_hatZs[:-28, :]
+            X_test = X_hatZs[-28:, :]
+            y_train = y_hatZs[:-28]
+            y_test = y_hatZs[-28:]
 
         predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, args.crossValFlag, args.SEED, args.zeroMeanHatZs, args.useSimData, args.grid)
         # print 'predic_accuracy for seed ' + str(args.SEED)  + ' is ' + '{:.1%}'.format(predic_accuracy)

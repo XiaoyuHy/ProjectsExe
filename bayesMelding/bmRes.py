@@ -3,6 +3,12 @@ from matplotlib import pyplot as plt
 import pickle
 import argparse
 import os
+from rpy2.robjects.packages import importr
+from rpy2.robjects import r
+import rpy2.robjects as ro
+from rpy2.robjects import numpy2ri
+from matplotlib.lines import Line2D
+import matplotlib.colors
 
 def plot(useSimData):
 	
@@ -295,7 +301,8 @@ def plot(useSimData):
 	plt.show()
 	plt.close()   
 def resGridDataFusionVsKrig(numMo):
-	seeds = np.array(list(np.arange(200, 206)) + list(np.arange(207, 263)) + list(np.arange(264, 282)) + list(np.arange(283, 300)))
+	# seeds = np.array(list(np.arange(200, 206)) + list(np.arange(207, 263)) + list(np.arange(264, 282)) + list(np.arange(283, 300)))
+	seeds = range(200, 220)
 	rmse_outSamp = []
 	avgVar_outSamp = []
 	predicAccuracy_outSamp = []
@@ -316,7 +323,7 @@ def resGridDataFusionVsKrig(numMo):
 		predicAccuracy_outSamp.append(predicAccuracy_tmp)
 
 	rmse_krig_outSample = np.array(rmse_outSamp)
-	rmse_krig_outSample = np.mean(rmse_krig_outSample**2, axis=0)
+	rmse_krig_outSample = np.sqrt(np.mean(rmse_krig_outSample**2, axis=0))
 	print(rmse_krig_outSample)
 
 	# # lower_bound = np.array([0.] * 2)
@@ -331,9 +338,25 @@ def resGridDataFusionVsKrig(numMo):
 		os.makedirs(output_folder)
 	output_folder += '/'
 
+	print(rmse_krig_outSample.max())
+
+	
+	cmap = plt.cm.jet
+	# extract all colors from the .jet map
+	cmaplist = [cmap(i) for i in range(cmap.N)]
+	# force the first color entry to be grey
+	# cmaplist[0] = (.5,.5,.5,1.0)
+	# create the new map
+	cmap0 = cmap.from_list('Custom cmap', cmaplist, cmap.N)
+
+	# define the bins and normalize
+	bounds = np.linspace(0, np.ceil(rmse_krig_outSample.max()),20)
+	norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
+
+
 	plt.figure()
 	im = plt.imshow(np.flipud(rmse_krig_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
-		cmap  =plt.matplotlib.cm.jet, vmin =0., vmax = rmse_krig_outSample.max())
+		cmap  =cmap0, norm = norm0)
 	cb=plt.colorbar(im)
 	cb.set_label('${RMSE}$')
 	plt.xlabel('$lon$')
@@ -343,14 +366,19 @@ def resGridDataFusionVsKrig(numMo):
 	plt.savefig(output_folder + 'Krig_predic_RMSE.png')
 	plt.show()
 	plt.close()
+	
 
 	avgVar_krig_outSample = np.array(avgVar_outSamp)
 	avgVar_krig_outSample = np.mean(avgVar_krig_outSample, axis = 0)
 	print(avgVar_krig_outSample)
 
+
+	bounds = np.linspace(6.0, np.ceil(avgVar_krig_outSample.max()),20)
+	norm1 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
+
 	plt.figure()
 	im = plt.imshow(np.flipud(avgVar_krig_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
-		cmap =plt.matplotlib.cm.jet, vmin = 0, vmax = avgVar_krig_outSample.max())
+		cmap =cmap0, norm = norm1)
 	cb=plt.colorbar(im)
 	cb.set_label('${STD}$')
 	plt.xlabel('$lon$')
@@ -362,15 +390,19 @@ def resGridDataFusionVsKrig(numMo):
 	plt.close()
 
 	predicAccuracy_krig_outSample = np.array(predicAccuracy_outSamp)
-	predicAccuracy_krig_outSample = np.sum(predicAccuracy_krig_outSample, axis=0)/97.
+	predicAccuracy_krig_outSample = np.sum(predicAccuracy_krig_outSample, axis=0)/20.
 	print (predicAccuracy_krig_outSample.min(), predicAccuracy_krig_outSample.max()) 
 	print (np.sum((predicAccuracy_krig_outSample<0.90).astype(int)))
 	print ('avergae predicAccuracy_krig_outSample is ' + str(np.mean(predicAccuracy_krig_outSample)))
 	print ('median predicAccuracy_krig_outSample is ' + str(np.median(predicAccuracy_krig_outSample)))
 
+
+	bounds = np.linspace(0, 1.0, 20)
+	norm2 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
+
 	plt.figure()
 	im = plt.imshow(np.flipud(predicAccuracy_krig_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
-		cmap =plt.matplotlib.cm.jet, vmin =0., vmax = predicAccuracy_krig_outSample.max())
+		cmap =cmap0, norm = norm2)
 	cb=plt.colorbar(im)
 	cb.set_label('${Coverage}$')
 	plt.xlabel('$lon$')
@@ -381,7 +413,9 @@ def resGridDataFusionVsKrig(numMo):
 	plt.show()
 	plt.close()
 
-	seeds = np.array(list(np.arange(200, 206)) + list(np.arange(207, 263)) + list(np.arange(264, 282)) + list(np.arange(283, 300)))
+
+	# seeds = np.array(list(np.arange(200, 206)) + list(np.arange(207, 263)) + list(np.arange(264, 282)) + list(np.arange(283, 300)))
+	seeds = range(200, 220)
 
 	rmse_outSamp = []
 	avgVar_outSamp = []
@@ -409,14 +443,14 @@ def resGridDataFusionVsKrig(numMo):
 
 	plt.figure()
 	im = plt.imshow(np.flipud(rmse_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
-		cmap =plt.matplotlib.cm.jet, vmin =0, vmax = rmse_krig_outSample.max())
+		cmap =cmap0, norm=norm0)
 	# im = plt.imshow(np.flipud(rmse_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
 	# 	cmap =plt.matplotlib.cm.jet, vmin =0, vmax = rmse_bm_outSample.max())
 	cb=plt.colorbar(im)
 	cb.set_label('${RMSE}$')
 	plt.xlabel('$lon$')
 	plt.ylabel('$lat$')
-	plt.title('RMSE - Data fusion')
+	plt.title('RMSE - Data assimilation')
 	# plt.grid()
 	plt.savefig(output_folder + 'DF_predic_RMSE.png')
 	plt.show()
@@ -428,21 +462,21 @@ def resGridDataFusionVsKrig(numMo):
 
 	plt.figure()
 	im = plt.imshow(np.flipud(avgVar_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
-		cmap =plt.matplotlib.cm.jet, vmin =0, vmax = avgVar_krig_outSample.max())
+		cmap =cmap0, norm = norm1)
 	# im = plt.imshow(np.flipud(avgVar_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
 	# 	cmap =plt.matplotlib.cm.jet, vmin =0, vmax = avgVar_bm_outSample.max())
 	cb=plt.colorbar(im)
 	cb.set_label('${STD}$')
 	plt.xlabel('$lon$')
 	plt.ylabel('$lat$')
-	plt.title('Width of confidence interval - Data fusion')
+	plt.title('Width of confidence interval - Data assimilation')
 	# plt.grid()
 	plt.savefig(output_folder + 'DF_predic_std.png')
 	plt.show()
 	plt.close()
 
 	predicAccuracy_outSample = np.array(predicAccuracy_outSamp)
-	predicAccuracy_bm_outSample = np.sum(predicAccuracy_outSample, axis=0)/97.
+	predicAccuracy_bm_outSample = np.sum(predicAccuracy_outSample, axis=0)/20.
 	print (predicAccuracy_bm_outSample.min(), predicAccuracy_bm_outSample.max())
 	print (np.sum((predicAccuracy_bm_outSample<0.90).astype(int)))
 	print ('avergae predicAccuracy_bm_outSample is ' + str(np.mean(predicAccuracy_bm_outSample)))
@@ -450,14 +484,14 @@ def resGridDataFusionVsKrig(numMo):
 
 	plt.figure()
 	im = plt.imshow(np.flipud(predicAccuracy_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
-		cmap =plt.matplotlib.cm.jet, vmin =0., vmax = predicAccuracy_krig_outSample.max())
+		cmap =cmap0, norm = norm2)
 	# im = plt.imshow(np.flipud(predicAccuracy_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
 	# 	cmap =plt.matplotlib.cm.jet, vmin =0.8, vmax = predicAccuracy_bm_outSample.max())
 	cb=plt.colorbar(im)
 	cb.set_label('${Coverage}$')
 	plt.xlabel('$lon$')
 	plt.ylabel('$lat$')
-	plt.title('Coverage probability - Data fusion')
+	plt.title('Coverage probability - Data assimilation')
 	# plt.grid()
 	plt.savefig(output_folder + 'DF_predic_coverage.png')
 	plt.show()

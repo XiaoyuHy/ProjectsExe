@@ -124,7 +124,7 @@ def sim_hatTildZs_With_Plots(SEED = 200, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	# ax.set_ylim([0, 0.15])
 	ax.legend(loc='best')
 	plt.savefig(output_folder + 'gammaTransformedWithMean.png')
-	plt.show()
+	# plt.show()
 	plt.close()
 
 
@@ -168,7 +168,7 @@ def sim_hatTildZs_With_Plots(SEED = 200, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	# ax.set_ylim([0, 0.15])
 	ax.legend(loc='best')
 	plt.savefig(output_folder + 'gammaTransformedNoMean.png')
-	plt.show()
+	# plt.show()
 	plt.close()
 
 	x1, x2 = np.meshgrid(np.linspace(lower_bound[0], upper_bound[0], point_res),  
