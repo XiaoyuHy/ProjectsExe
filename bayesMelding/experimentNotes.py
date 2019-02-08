@@ -8,8 +8,9 @@ equally well in the case of application where we only have 128 observations.
 
 So decided to plot the predictions and diagnosis for one particular seed.
 
-For the simulated data, for the optimisation is not correct. could result in 0.%  out-of-sample prediction accuracy, the same for both the DA and kriging models
-form example for SEED 222, have to use 7 repeats of BFGS optimisation for the Kriging model.
+For the simulated data, if the optimisation is not correct. could result in 0.%  out-of-sample prediction accuracy, the same for both the DA and kriging models
+form example for SEED 222, have to use 7 repeats of BFGS optimisation for the Kriging model; for DA, see logs/output219_repeat2_numMo50 on callisto cluster, 
+use 4 repeats of BFGS optimisation, and the 3rd and 4th repeat have similar minus_log_like, but quite different parameters for sigma2, phi2
 
 23/01/2019:
 for France Data, Gammatranformed data, Ztilde10by10
