@@ -6,7 +6,10 @@ where the distribution of the diffrence  is skewed.
 By plotting the diffrence between the two models (see DataImogenFrGridMoNotCentre/RMSEdiff_outSample.png), find the the confidence interval include 0, inicating both model perform 
 equally well in the case of application where we only have 128 observations.
 
-So decided to plot the predictions and diagnosis for one particular seeds.
+So decided to plot the predictions and diagnosis for one particular seed.
+
+For the simulated data, for the optimisation is not correct. could result in 0.%  out-of-sample prediction accuracy, the same for both the DA and kriging models
+form example for SEED 222, have to use 7 repeats of BFGS optimisation for the Kriging model.
 
 23/01/2019:
 for France Data, Gammatranformed data, Ztilde10by10
