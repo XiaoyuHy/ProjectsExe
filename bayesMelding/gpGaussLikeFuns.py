@@ -6,17 +6,17 @@ import pickle
 import os
 import argparse
 from itertools import chain
-import statsmodels.api as sm
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import pyplot as plt
+# import statsmodels.api as sm
+# from mpl_toolkits.mplot3d import Axes3D
+# from matplotlib import pyplot as plt
 import matplotlib.colors
 import matplotlib as mpl
 # plt.switch_backend('agg') # This line is for running code on cluster to make pyplot working on cluster
-from rpy2.robjects.packages import importr
-from rpy2.robjects import r
-import rpy2.robjects as ro
-from rpy2.robjects import numpy2ri
-from matplotlib.lines import Line2D
+# from rpy2.robjects.packages import importr
+# from rpy2.robjects import r
+# import rpy2.robjects as ro
+# from rpy2.robjects import numpy2ri
+# from matplotlib.lines import Line2D
 
 np.seterr(over='raise', divide='raise')
 
@@ -447,25 +447,25 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             standardised_y_estimate = (mu_star - y_test)
         else:
             standardised_y_estimate = (mu_star - y_test)/np.exp(log_obs_noi_scale)
-        std_yEst_out = open(output_folder + 'std_yEst_outSample.pkl', 'wb')
-        pickle.dump(standardised_y_estimate, std_yEst_out)
-        plt.figure()
-        # plt.scatter(index, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
-        plt.scatter(mu_star + mean_y_hatZs, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
-        # plt.scatter(index, standardised_y_etstimate, c='k')
-        plt.axhline(0, color='black', lw=1.2, ls ='-')
-        plt.axhline(2, color='black', lw=1.2, ls =':')
-        plt.axhline(-2, color='black', lw=1.2, ls =':')
-        plt.xlabel('Predictions')
-        plt.ylabel('Standardised residual')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_outSample.png')
-        plt.show()
-        plt.close()
+            std_yEst_out = open(output_folder + 'std_yEst_outSample.pkl', 'wb')
+            pickle.dump(standardised_y_estimate, std_yEst_out)
+            # plt.figure()
+            # # plt.scatter(index, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
+            # plt.scatter(mu_star + mean_y_hatZs, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
+            # # plt.scatter(index, standardised_y_etstimate, c='k')
+            # plt.axhline(0, color='black', lw=1.2, ls ='-')
+            # plt.axhline(2, color='black', lw=1.2, ls =':')
+            # plt.axhline(-2, color='black', lw=1.2, ls =':')
+            # plt.xlabel('Predictions')
+            # plt.ylabel('Standardised residual')
+            # plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_outSample.png')
+            # plt.show()
+            # plt.close()
 
-        sm.qqplot(standardised_y_estimate, line='45')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'normalQQ_outSample.png')
-        plt.show()
-        plt.close()
+            # sm.qqplot(standardised_y_estimate, line='45')
+            # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'normalQQ_outSample.png')
+            # plt.show()
+            # plt.close()
 
     
     LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
@@ -666,65 +666,65 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         # plt.show()
         # exit(-1)
 
-        plt.figure()
-        plt.plot(y_test, y_test, ls='-', color = 'r')
-        plt.scatter(y_test, mu_star, color='black', label='predic_mean')
-        plt.scatter(y_test, upper_interv_predic, color = 'blue', label = 'predic_upper_CI', marker = '^')
-        plt.scatter(y_test, lower_interv_predic, color ='green', label = 'predic_lower_CI', marker = 'v')
-        plt.xlabel('Observations')
-        plt.ylabel('Predictions')
-        plt.legend(loc='best')
-        plt.title('Out of sample prediction')
-        plt.savefig(output_folder + 'BM_predic_scatter_seed' + str(SEED)+ 'numMo' + str(numMo) + 'mean.png')
-        plt.show()
-        plt.close()
+        # plt.figure()
+        # plt.plot(y_test, y_test, ls='-', color = 'r')
+        # plt.scatter(y_test, mu_star, color='black', label='predic_mean')
+        # plt.scatter(y_test, upper_interv_predic, color = 'blue', label = 'predic_upper_CI', marker = '^')
+        # plt.scatter(y_test, lower_interv_predic, color ='green', label = 'predic_lower_CI', marker = 'v')
+        # plt.xlabel('Observations')
+        # plt.ylabel('Predictions')
+        # plt.legend(loc='best')
+        # plt.title('Out of sample prediction')
+        # plt.savefig(output_folder + 'BM_predic_scatter_seed' + str(SEED)+ 'numMo' + str(numMo) + 'mean.png')
+        # plt.show()
+        # plt.close()
 
 
-        residuals = y_test - mu_star
+        # residuals = y_test - mu_star
 
-        max_coords = X_test[np.argsort(np.abs(residuals))[-3:], :]
-        print('max_coords of residuals is ' + str(max_coords))
+        # max_coords = X_test[np.argsort(np.abs(residuals))[-3:], :]
+        # print('max_coords of residuals is ' + str(max_coords))
 
-        maxAbs = np.array([np.abs(residuals.min()), np.abs(residuals.max())]).max()
+        # maxAbs = np.array([np.abs(residuals.min()), np.abs(residuals.max())]).max()
 
-        fig, ax = plt.subplots()
-        # cmap = mpl.colors.ListedColormap(['red', 'green', 'orange' ,'blue',  'cyan', 'white'])
-        cmap = mpl.colors.ListedColormap(["#00007F", "blue",'cyan', 'white', 'green', "red", "#7F0000"])
-        # cmap.set_over('0.25')
-        # cmap.set_under('0.75')
-        cmap.set_under("crimson")
-        cmap.set_over('black')
+        # fig, ax = plt.subplots()
+        # # cmap = mpl.colors.ListedColormap(['red', 'green', 'orange' ,'blue',  'cyan', 'white'])
+        # cmap = mpl.colors.ListedColormap(["#00007F", "blue",'cyan', 'white', 'green', "red", "#7F0000"])
+        # # cmap.set_over('0.25')
+        # # cmap.set_under('0.75')
+        # cmap.set_under("crimson")
+        # cmap.set_over('black')
 
-        residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-        plt.title('Residuals of out-of-sample prediction')
-        plt.colorbar(residualsPlot, ax=ax)
-        plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'outSample.png')
-        plt.show()
-        plt.close()
+        # residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
+        # plt.xlabel('Longitude')
+        # plt.ylabel('Latitude')
+        # plt.title('Residuals of out-of-sample prediction')
+        # plt.colorbar(residualsPlot, ax=ax)
+        # plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'outSample.png')
+        # plt.show()
+        # plt.close()
        
-        numpy2ri.activate() 
-        plot_seq = r.pretty(np.arange(6,42), 20)
-        jet_colors = r.colorRampPalette(r.c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
-        pal = jet_colors(len(plot_seq) - 1)
-        pal = np.array(pal)
-        numpy2ri.deactivate()
-        cmap = mpl.colors.ListedColormap(list(pal))
+        # numpy2ri.activate() 
+        # plot_seq = r.pretty(np.arange(6,42), 20)
+        # jet_colors = r.colorRampPalette(r.c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+        # pal = jet_colors(len(plot_seq) - 1)
+        # pal = np.array(pal)
+        # numpy2ri.deactivate()
+        # cmap = mpl.colors.ListedColormap(list(pal))
         
-        fig, ax = plt.subplots()
-        # testObs = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test, cmap=plt.cm.jet, vmin=min_all, vmax=max_all)
-        testObs = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test, cmap=cmap, vmin=min_all, vmax=max_all)
-        # plt.colorbar()
-        for i, txt in enumerate(np.round(y_test, 1)):
-            ax.annotate(txt, (X_test[:, 0][i], X_test[:, 1][i]))
-        plt.colorbar(testObs, ax = ax)
-        plt.title('Out-of-sample test observations')
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'TestObs.png')
-        plt.show()
-        plt.close()
+        # fig, ax = plt.subplots()
+        # # testObs = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test, cmap=plt.cm.jet, vmin=min_all, vmax=max_all)
+        # testObs = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test, cmap=cmap, vmin=min_all, vmax=max_all)
+        # # plt.colorbar()
+        # for i, txt in enumerate(np.round(y_test, 1)):
+        #     ax.annotate(txt, (X_test[:, 0][i], X_test[:, 1][i]))
+        # plt.colorbar(testObs, ax = ax)
+        # plt.title('Out-of-sample test observations')
+        # plt.xlabel('Longitude')
+        # plt.ylabel('Latitude')
+        # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'TestObs.png')
+        # plt.show()
+        # plt.close()
 
         #10/01/2019: creat cell coordinated of resoluton 10 by 10
         # cell_res = 10
@@ -931,44 +931,46 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         standardised_y_estimate = (mu_star - y_test)/(np.exp(log_obs_noi_scale) + 1e-8)
         std_yEst_out = open(output_folder + 'std_yEst_inSample.pkl', 'wb')
         pickle.dump(standardised_y_estimate, std_yEst_out)
-        plt.figure()
-        # plt.scatter(index, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
-        plt.scatter(mu_star + mean_y_hatZs, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
-        # plt.scatter(index, standardised_y_etstimate, c='k')
-        plt.axhline(0, color='black', lw=1.2, ls ='-')
-        plt.axhline(2, color='black', lw=1.2, ls =':')
-        plt.axhline(-2, color='black', lw=1.2, ls =':')
-        plt.xlabel('Predictions')
-        plt.ylabel('Standardised residual')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_inSample.png')
-        plt.show()
-        plt.close()
 
-        sm.qqplot(standardised_y_estimate, line='45')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'normalQQ_inSample.png')
-        plt.show()
-        plt.close()
+        # if not useSimData:
+        #     plt.figure()
+        #     # plt.scatter(index, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
+        #     plt.scatter(mu_star + mean_y_hatZs, standardised_y_estimate, facecolors='none', edgecolors='k', linewidths=1.2)
+        #     # plt.scatter(index, standardised_y_etstimate, c='k')
+        #     plt.axhline(0, color='black', lw=1.2, ls ='-')
+        #     plt.axhline(2, color='black', lw=1.2, ls =':')
+        #     plt.axhline(-2, color='black', lw=1.2, ls =':')
+        #     plt.xlabel('Predictions')
+        #     plt.ylabel('Standardised residual')
+        #     plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_inSample.png')
+        #     plt.show()
+        #     plt.close()
 
-        residuals = y_test - mu_star
+        #     sm.qqplot(standardised_y_estimate, line='45')
+        #     plt.savefig(output_folder + 'SEED'+ str(SEED) + 'normalQQ_inSample.png')
+        #     plt.show()
+        #     plt.close()
 
-        max_coords = X_test[np.argsort(np.abs(residuals))[-3:], :]
-        print('max_coords of residuals is ' + str(max_coords))
+        #     residuals = y_test - mu_star
 
-        maxAbs = np.array([np.abs(residuals.min()), np.abs(residuals.max())]).max()
+        #     max_coords = X_test[np.argsort(np.abs(residuals))[-3:], :]
+        #     print('max_coords of residuals is ' + str(max_coords))
 
-        fig, ax = plt.subplots()
-        cmap = mpl.colors.ListedColormap(["#00007F", "blue",'cyan', 'white', 'green', "red", "#7F0000"])
-        cmap.set_under("crimson")
-        cmap.set_over('black')
+        #     maxAbs = np.array([np.abs(residuals.min()), np.abs(residuals.max())]).max()
 
-        residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-        plt.title('Residuals of in-sample prediction')
-        plt.colorbar(residualsPlot, ax=ax)
-        plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'insample.png')
-        plt.show()
-        plt.close()
+        #     fig, ax = plt.subplots()
+        #     cmap = mpl.colors.ListedColormap(["#00007F", "blue",'cyan', 'white', 'green', "red", "#7F0000"])
+        #     cmap.set_under("crimson")
+        #     cmap.set_over('black')
+
+        #     residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
+        #     plt.xlabel('Longitude')
+        #     plt.ylabel('Latitude')
+        #     plt.title('Residuals of in-sample prediction')
+        #     plt.colorbar(residualsPlot, ax=ax)
+        #     plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'insample.png')
+        #     plt.show()
+        #     plt.close()
     
     LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
     for i in range(ntest):
@@ -1009,12 +1011,12 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 if __name__ == '__main__':
     computeN3Cost.init(0)
     p = argparse.ArgumentParser()
-    p.add_argument('-SEED', type=int, dest='SEED', default=120, help='The simulation index')
-    p.add_argument('-numObs', type=int, dest='numObs', default=128, help='Number of observations used in modelling')
-    p.add_argument('-numMo', type=int, dest='numMo', default=500, help='Number of model outputs used in modelling')
+    p.add_argument('-SEED', type=int, dest='SEED', default=200, help='The simulation index')
+    p.add_argument('-numObs', type=int, dest='numObs', default=200, help='Number of observations used in modelling')
+    p.add_argument('-numMo', type=int, dest='numMo', default=50, help='Number of model outputs used in modelling')
     p.add_argument('-crossValFlag', dest='crossValFlag', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='whether to validate the model using cross validation')
-    p.add_argument('-useSimData', dest='useSimData', default=False,  type=lambda x: (str(x).lower() == 'true'), \
+    p.add_argument('-useSimData', dest='useSimData', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use simulated data')
     p.add_argument('-grid', dest='grid', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether the predictions are produced for each grid')
     p.add_argument('-predicMo', dest='predicMo', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether to predict the value where model outputs are produced')
@@ -1022,7 +1024,8 @@ if __name__ == '__main__':
     args = p.parse_args()
     if args.useSimData: 
         # input_folder = os.getcwd() + '/dataRsimGammaTransformErrorInZtilde/numObs_200_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
-        input_folder = os.getcwd() + '/dataRsimNoFrGammaTransformArealRes25Cods100butArealZs100/numObs_200_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+        # input_folder = os.getcwd() + '/dataRsimNoFrGammaTransformArealRes25Cods100butArealZs100/numObs_200_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+        input_folder = os.getcwd() + '/dataSimulated/numObs_200_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
     else:
         input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
 
@@ -1079,7 +1082,8 @@ if __name__ == '__main__':
             # X_test = np.array(list(chain.from_iterable(X_tildZs)))
             # y_test = y_tildZs
 
-            input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
+            # input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
+            input_folder = os.getcwd() + '/dataSimulated/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
             all_X_Zs_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
             all_X_Zs = pickle.load(all_X_Zs_in) 
 

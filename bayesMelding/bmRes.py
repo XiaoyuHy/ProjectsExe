@@ -3,11 +3,6 @@ from matplotlib import pyplot as plt
 import pickle
 import argparse
 import os
-from rpy2.robjects.packages import importr
-from rpy2.robjects import r
-import rpy2.robjects as ro
-from rpy2.robjects import numpy2ri
-from matplotlib.lines import Line2D
 import matplotlib.colors
 
 def plot(useSimData):
@@ -302,7 +297,8 @@ def plot(useSimData):
 	plt.close()   
 def resGridDataFusionVsKrig(numMo):
 	# seeds = np.array(list(np.arange(200, 206)) + list(np.arange(207, 263)) + list(np.arange(264, 282)) + list(np.arange(283, 300)))
-	seeds = range(200, 220)
+	# seeds = range(200, 220)
+	seeds = (201, 202, 203, 204, 206, 208, 209, 210, 211, 212, 213, 215, 216, 218)
 	rmse_outSamp = []
 	avgVar_outSamp = []
 	predicAccuracy_outSamp = []
@@ -390,14 +386,14 @@ def resGridDataFusionVsKrig(numMo):
 	plt.close()
 
 	predicAccuracy_krig_outSample = np.array(predicAccuracy_outSamp)
-	predicAccuracy_krig_outSample = np.sum(predicAccuracy_krig_outSample, axis=0)/20.
+	predicAccuracy_krig_outSample = np.sum(predicAccuracy_krig_outSample, axis=0)/14.
 	print (predicAccuracy_krig_outSample.min(), predicAccuracy_krig_outSample.max()) 
 	print (np.sum((predicAccuracy_krig_outSample<0.90).astype(int)))
 	print ('avergae predicAccuracy_krig_outSample is ' + str(np.mean(predicAccuracy_krig_outSample)))
 	print ('median predicAccuracy_krig_outSample is ' + str(np.median(predicAccuracy_krig_outSample)))
 
 
-	bounds = np.linspace(0, 1.0, 20)
+	bounds = np.linspace(0.8, 1.0, 20)
 	norm2 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
 	plt.figure()
@@ -415,7 +411,8 @@ def resGridDataFusionVsKrig(numMo):
 
 
 	# seeds = np.array(list(np.arange(200, 206)) + list(np.arange(207, 263)) + list(np.arange(264, 282)) + list(np.arange(283, 300)))
-	seeds = range(200, 220)
+	# seeds = range(200, 220)
+	seeds = (201, 202, 203, 204, 206, 208, 209, 210, 211, 212, 213, 215, 216, 218)
 
 	rmse_outSamp = []
 	avgVar_outSamp = []
@@ -476,7 +473,7 @@ def resGridDataFusionVsKrig(numMo):
 	plt.close()
 
 	predicAccuracy_outSample = np.array(predicAccuracy_outSamp)
-	predicAccuracy_bm_outSample = np.sum(predicAccuracy_outSample, axis=0)/20.
+	predicAccuracy_bm_outSample = np.sum(predicAccuracy_outSample, axis=0)/14.
 	print (predicAccuracy_bm_outSample.min(), predicAccuracy_bm_outSample.max())
 	print (np.sum((predicAccuracy_bm_outSample<0.90).astype(int)))
 	print ('avergae predicAccuracy_bm_outSample is ' + str(np.mean(predicAccuracy_bm_outSample)))
@@ -501,7 +498,7 @@ def resGridDataFusionVsKrig(numMo):
 if __name__ == '__main__':
 	p = argparse.ArgumentParser()
 	p.add_argument('-useSimData', dest='useSimData', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether to use simulated data')
-	p.add_argument('-numMo', type=int, dest='numMo', default=50, help='Number of model outputs used in modelling')
+	p.add_argument('-numMo', type=int, dest='numMo', default=300, help='Number of model outputs used in modelling')
 	args = p.parse_args()
 	resGridDataFusionVsKrig(args.numMo)
 	# plot(args.useSimData)
