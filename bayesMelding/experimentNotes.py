@@ -1,3 +1,9 @@
+09/02/2019:
+For seed 207 - simulated data, 4 repeats of BFGS gives low prediction accuracy (72.2%), but 3 rounds of LBFGSB + BFGS works (92.3%)
+For seed 219, 2 repeats of BFGS working, but 2 repeats of  LBFGSB + BFGS NOT work
+suggests initialisation is very import for the optimisation
+
+
 08/02/2019:
 
 When comparing DA and kriging, could plot the RMSE diffrence  between the two models; apart from plot the mean diffrence, plot the 0.975 quartile and 0.025 quartile to account for the case 

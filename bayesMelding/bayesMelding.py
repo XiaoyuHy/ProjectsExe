@@ -1263,10 +1263,10 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
     else:
         num_par=X_hatZs.shape[1]  
     res = []
-    if numMo == 50:
-        # rounds =2
+    if numMo == 250:
+        rounds =3
         for round in range(rounds):
-            res_tmp = optim_RndStart1(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat,seed, numMo, round)
+            res_tmp = optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat,seed, numMo, round)
             # print 'res_tmp is ' + str(res_tmp)
             res.append(res_tmp)
         res = np.array(res)
