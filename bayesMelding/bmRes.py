@@ -12,7 +12,7 @@ def plot(useSimData):
 		#The following seeds are for R simulated Gamma transformed data see dataRsimGammaTransformErrorInZtilde
 		# seeds = np.array(list(np.arange(200, 206)) + list(np.arange(207, 263)) + list(np.arange(264, 282)) + list(np.arange(283, 300)))
         #The following seeds are for R simulated, more skewed Gamma transformed data (arealRes 25, res of areal cooridated 10 by 10, but res of areal Zs 40*40) see dataSimulated
-		seeds = (200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218)
+		seeds = (200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219)
 	else:
 		seeds = range(120, 220)
 	

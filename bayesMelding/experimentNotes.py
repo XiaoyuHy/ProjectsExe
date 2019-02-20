@@ -1,3 +1,12 @@
+14/02/2019:
+For in-sample prediction for the data assimilation model, since observations Zhat have a nugget term, so Zhat|Zhat, Ztilde still has a distribution, 
+so still have RMSE. However, since model outputs Ztilde do not have a nugget term, Ztild|Zhat, Ztild = Ztild|Ztild?, and the predicted mean is the same as Ztilde,
+and have 0 RMSE.
+
+So decided to go for Ztilde ~ MVN(mu, K_arealToareal) or Ztilde|Zhat ~MVN(..., ...), and found that the latter has lower RMSE, better QQ plot performance
+
+Need to check Zhat ~ MVN(0, K_pointTopoint) or Zhat|Ztilde ~MVN(..., ...) although Zhat|Zhat, Ztilde works
+
 09/02/2019:
 For seed 207 - simulated data, 4 repeats of BFGS gives low prediction accuracy (72.2%), but 3 rounds of LBFGSB + BFGS works (92.3%)
 For seed 219, 2 repeats of BFGS working, but 2 repeats of  LBFGSB + BFGS NOT work
