@@ -188,10 +188,13 @@ def compute_chol_pivoted(cov):
     Q = r.chol(cov, pivot= True)
     pivot = r.attr(Q, "pivot")
     tmp  = Q.rx(True, r.order(pivot))
-    numpy2ri.deactivate()
+    numpy2ri.deactivate() 
     tmp = np.array(tmp)
     G = tmp.T
-    return G
+
+    pivot = np.array(pivot) # the index in Python starting from 0 compared to that of 1 in R
+    pivot = pivot -1
+    return [G, pivot]
 
 # compute minus the log of likelihood (-0.5*log(|C|)- 0.5*y^T*C^-1*y - -0.5 * n * log(2pi))and the gradients with respect to parameters for GP regression: 
 
@@ -462,20 +465,23 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         margin_var = np.diag(cov_of_predic) # This is equal to vstar + np.exp(log_obs_noi_scale)**2
         print ('Shape of X_test is ' + str(X_test.shape))
         print( 'Shape of cov_of_predic is ' + str(cov_of_predic.shape))
-        G = compute_chol_pivoted(cov_of_predic)
+        G, pivot = compute_chol_pivoted(cov_of_predic)
         # Gtmp = G + np.diag(np.repeat(OMEGA, G.shape[0])) #even Gtmp is NOT positive definite
         # l_chol_G = compute_L_chol(Gtmp)
         # inv_G = linalg.solve_triangular(l_chol_G.T, linalg.solve_triangular(l_chol_G,np.eye(l_chol_G.shape[0])))
         inv_G = linalg.inv(G)
-   
+        print('margin_var is ' + str(margin_var))
+        print('pivot is ' + str(pivot))
+
     index = np.arange(len(y_test))
     if useSimData:
-        standardised_y_estimate = (mu_star - y_test)
+        standardised_y_estimate = (y_test - mu_star)
     else:
         if indivError:
-            standardised_y_estimate = (mu_star - y_test)/np.sqrt(margin_var)
+            standardised_y_estimate = (y_test - mu_star)/np.sqrt(margin_var)
+            print(standardised_y_estimate)
         else:
-            standardised_y_estimate = np.dot(inv_G, mu_star - y_test)
+            standardised_y_estimate = np.dot(inv_G, y_test - mu_star)
       
         std_yEst_out = open(output_folder + 'std_yEst_outSample.pkl', 'wb')
         pickle.dump(standardised_y_estimate, std_yEst_out)
@@ -505,6 +511,18 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         plt.savefig(output_folder + 'SEED'+ str(SEED) +'OutSampQQ_indivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.png')
         plt.show()
         plt.close()
+    print(np.abs(standardised_y_estimate))
+    idx_largeResiduls = np.argsort(np.abs(standardised_y_estimate))[-3:]
+    print(idx_largeResiduls)
+    predicMean = mu_star + mean_y_hatZs
+    if indivError:
+        print(X_test[idx_largeResiduls, :])
+        print(predicMean[idx_largeResiduls])
+    else:
+        idx_pivot = pivot[idx_largeResiduls]
+        print('idx_pivot is ' + str(idx_pivot))
+        print(X_test[idx_pivot, :])
+
          
     if useSimData:
         upper_interv_predic = mu_star + 2 * np.sqrt(vstar)
@@ -696,9 +714,14 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         plt.close()
 
 
-        residuals = y_test - mu_star
-
-        max_coords = X_test[np.argsort(np.abs(residuals))[-3:], :]
+        # residuals = y_test - mu_star
+        residuals = standardised_y_estimate
+        print(residuals)
+        if indivError:
+            max_coords = X_test[np.argsort(np.abs(residuals))[-3:], :]
+        else:
+            X_testTmp = X_test[pivot, :]
+            max_coords = X_testTmp[np.argsort(np.abs(residuals))[-3:], :]
         print('max_coords of residuals is ' + str(max_coords))
 
         maxAbs = np.array([np.abs(residuals.min()), np.abs(residuals.max())]).max()
@@ -711,12 +734,22 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         cmap.set_under("crimson")
         cmap.set_over('black')
 
-        residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
+        bounds = np.array([-np.ceil(maxAbs), -4, -2, -1, 1, 2, 4, np.ceil(maxAbs)])
+        norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
+
+        # residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
+        if indivError:
+            # residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= standardised_y_estimate, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
+            residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= standardised_y_estimate, cmap=cmap, norm= norm0)
+        else:
+            # residualsPlot = ax.scatter(X_test[pivot, 0], X_test[pivot, 1], c= standardised_y_estimate, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
+            residualsPlot = ax.scatter(X_test[pivot, 0], X_test[pivot, 1], c= standardised_y_estimate, cmap=cmap, norm = norm0)
+
         plt.xlabel('Longitude')
         plt.ylabel('Latitude')
         plt.title('Residuals of out-of-sample prediction')
         plt.colorbar(residualsPlot, ax=ax)
-        plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'outSample.png')
+        plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) +  '_outSampleStd.png')
         plt.show()
         plt.close()
        
@@ -772,7 +805,11 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             Line2D([0], [0], marker='s',color='w', markerfacecolor=None, markeredgecolor='k', markersize=8, label='Test points')] 
 
         fig, ax = plt.subplots()
-        maxYtest = y_test[np.argsort(np.abs(residuals))[-3:]]
+        if indivError:
+            maxYtest = y_test[np.argsort(np.abs(residuals))[-3:]]
+        else:
+            y_testTmp = y_test[pivot]
+            maxYtest = y_testTmp[np.argsort(np.abs(residuals))[-3:]]
         maxPlot = ax.scatter(max_coords[:, 0], max_coords[:, 1], c= maxYtest, cmap=cmap, norm =norm0, marker = 's')
         # for i, txt in enumerate(np.round(maxYtest, 1)):
         #     ax.annotate(txt, (max_coords[:, 0][i], max_coords[:, 1][i]))
@@ -793,10 +830,14 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         plt.close()
 
         legend_elements = [Line2D([0], [0], marker='o', color='w', label='Model outputs', markerfacecolor=None, markeredgecolor='k', markersize=8), \
-            Line2D([0], [0], marker='s',color='w', markerfacecolor=None, markeredgecolor='k', markersize=8, label='Test points')] 
+            Line2D([0], [0], marker='s', color='w', markerfacecolor=None, markeredgecolor='k', markersize=8, label='Test points')] 
 
         fig, ax = plt.subplots()
-        maxYtest = y_test[np.argsort(np.abs(residuals))[-3:]]
+        if indivError:
+            maxYtest = y_test[np.argsort(np.abs(residuals))[-3:]]
+        else:
+            y_testTmp = y_test[pivot]
+            maxYtest = y_testTmp[np.argsort(np.abs(residuals))[-3:]]
         maxPlot = ax.scatter(max_coords[:, 0], max_coords[:, 1], c= maxYtest, cmap=cmap, norm =norm0, marker = 's')
         # for i, txt in enumerate(np.round(maxYtest, 1)):
         #     ax.annotate(txt, (max_coords[:, 0][i], max_coords[:, 1][i]))
@@ -952,7 +993,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             print('marginZhat in-sample RMSE for seed' + str(SEED) + ' is :' + str(rmse))
             cov_of_predic = C_hatZs
             l_chol_ChatZs = compute_L_chol(C_hatZs) # This is pivoted cholesky decomposition
-            standardised_y_estimate = linalg.solve_triangular(l_chol_ChatZs, mu_star - y_test, lower=True)
+            standardised_y_estimate = linalg.solve_triangular(l_chol_ChatZs, y_test - mu_star, lower=True)
             std_yEst_out = open(output_folder + 'std_yEst_inSampleMarginZhat.pkl', 'wb')
             pickle.dump(standardised_y_estimate, std_yEst_out)
         elif conditionZhat:
@@ -964,9 +1005,9 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             u2 =  linalg.solve_triangular(l_chol_CtildeZs.T, linalg.solve_triangular(l_chol_CtildeZs, avg_pointAreal_lower, lower=True))
             conditon_cov = C_hatZs - np.dot(avg_pointAreal_upper, u2)
             cov_of_predic = conditon_cov
-            G = compute_chol_pivoted(conditon_cov) # This is pivoted cholesky decomposition
+            G, pivot = compute_chol_pivoted(conditon_cov) # This is pivoted cholesky decomposition
             inv_G = linalg.inv(G)
-            standardised_y_estimate = np.dot(inv_G, mu_star - y_test)
+            standardised_y_estimate = np.dot(inv_G, y_test - mu_star)
             std_yEst_out = open(output_folder + 'std_yEst_inSampleConditionZhat.pkl', 'wb')
             pickle.dump(standardised_y_estimate, std_yEst_out)
         elif conZhatZtilde:
@@ -975,13 +1016,13 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             print ('Shape of X_test is ' + str(X_test.shape))
             print( 'Shape of cov_of_predic is ' + str(cov_of_predic.shape))
             l_chol_cov_of_predic = compute_L_chol(cov_of_predic) # This is pivoted cholesky decomposition
-            standardised_y_estimate = linalg.solve_triangular(l_chol_cov_of_predic, mu_star - y_test, lower=True)
+            standardised_y_estimate = linalg.solve_triangular(l_chol_cov_of_predic, y_test - mu_star, lower=True)
             std_yEst_out = open(output_folder + 'std_yEst_inSampleConZhatZtilde.pkl', 'wb')
             pickle.dump(standardised_y_estimate, std_yEst_out)
     
         margin_var = np.diag(cov_of_predic)
         if indivError:
-            standardised_y_estimate = (mu_star - y_test)/np.sqrt(margin_var)
+            standardised_y_estimate = (y_test - mu_star)/np.sqrt(margin_var)
             std_yEst_out = open(output_folder + 'std_yEst_inSampleIndivErr.pkl', 'wb')
             pickle.dump(standardised_y_estimate, std_yEst_out)
 
@@ -1027,7 +1068,8 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             plt.show()
             plt.close()
 
-            residuals = y_test - mu_star
+            # residuals = y_test - mu_star
+            residuals = standardised_y_estimate
 
             max_coords = X_test[np.argsort(np.abs(residuals))[-3:], :]
             print('max_coords of residuals is ' + str(max_coords))
@@ -1038,18 +1080,24 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             cmap = mpl.colors.ListedColormap(["#00007F", "blue",'cyan', 'white', 'green', "red", "#7F0000"])
             cmap.set_under("crimson")
             cmap.set_over('black')
+            bounds = np.array([-np.ceil(maxAbs), -4, -2, -1, 1, 2, 4, np.ceil(maxAbs)])
+            norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
-            residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
+            # residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
+            if indivError:
+                residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= standardised_y_estimate, cmap=cmap, norm=norm0)
+            else:
+                residualsPlot = ax.scatter(X_test[pivot, 0], X_test[pivot, 1], c= standardised_y_estimate, cmap=cmap, norm=norm0)
             plt.xlabel('Longitude')
             plt.ylabel('Latitude')
             plt.title('Residuals of in-sample prediction')
             plt.colorbar(residualsPlot, ax=ax)
             if marginZhat:
-                plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'insampleMarginZhat.png')
-            elif conditionZhat:
-                plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'insampleConditionZhat.png')
+                plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) + '_insampleMarginZhat.png')
+            elif conditionZhat:   
+                plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) + '_insampleConditionZhatStd.png')
             else:
-                plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'insample.png')            
+                plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) + '_insample.png')            
             plt.show()
             plt.close()
     
@@ -1116,7 +1164,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 
         #The following two lines are for normal cholesky decomposition
         l_chol_cov_of_predic = compute_L_chol(cov_of_predic)
-        standardised_y_estimate = linalg.solve_triangular(l_chol_cov_of_predic, mu_star - y_test, lower=True)
+        standardised_y_estimate = linalg.solve_triangular(l_chol_cov_of_predic, y_test - mu_star, lower=True)
 
         std_yEst_out = open(output_folder + 'std_yEst_inSample.pkl', 'wb')
         pickle.dump(standardised_y_estimate, std_yEst_out)
@@ -1141,15 +1189,15 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         # l_chol_cov_of_predic = compute_L_chol(cov_of_predic)
         # standardised_y_estimate = linalg.solve_triangular(l_chol_cov_of_predic, mu_star - y_test, lower=True)
         # The following three lines are for pivoted cholesky decomposition
-        G = compute_chol_pivoted(cov_of_predic)
+        G, pivot = compute_chol_pivoted(cov_of_predic)
         inv_G = linalg.inv(G)
-        standardised_y_estimate = np.dot(inv_G, mu_star - y_test)
+        standardised_y_estimate = np.dot(inv_G,  y_test - mu_star)
         std_yEst_out = open(output_folder + 'std_yEst_inSampleCon.pkl', 'wb')
         pickle.dump(standardised_y_estimate, std_yEst_out)
 
     margin_var = np.diag(cov_of_predic)
     if indivError:
-        standardised_y_estimate = (mu_star - y_test)/np.sqrt(margin_var)
+        standardised_y_estimate = (y_test - mu_star)/np.sqrt(margin_var)
         std_yEst_out = open(output_folder + 'std_MoEst_inSampleIndivErr.pkl', 'wb')
         pickle.dump(standardised_y_estimate, std_yEst_out)
 
@@ -1184,7 +1232,8 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         plt.show()
         plt.close()
 
-        residuals = y_test - mu_star
+        # residuals = y_test - mu_star
+        residuals = standardised_y_estimate
         tmp = X_tildZs - cell_coords 
     
         # get the center coordinates of X_tildZs(X_test in this case)
@@ -1202,15 +1251,22 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         cmap.set_under("crimson")
         cmap.set_over('black')
 
-        residualsPlot = ax.scatter(X_mo[:, 0], X_mo[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
+        bounds = np.array([-np.ceil(maxAbs), -4, -2, -1, 1, 2, 4, np.ceil(maxAbs)])
+        norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
+
+        # residualsPlot = ax.scatter(X_mo[:, 0], X_mo[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
+        if indivError:
+            residualsPlot = ax.scatter(X_mo[:, 0], X_mo[:, 1], c= standardised_y_estimate, cmap=cmap, norm = norm0)
+        else:
+            residualsPlot = ax.scatter(X_mo[pivot, 0], X_mo[pivot, 1], c= standardised_y_estimate, cmap=cmap, norm=norm0)
         plt.xlabel('Longitude')
         plt.ylabel('Latitude')
         plt.title('Residuals of in-sample prediction')
         plt.colorbar(residualsPlot, ax=ax)
         if marginZtilde:
-            plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'insampleYtildZs.png')
+            plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) + '_insampleYtildZs.png')
         else:
-            plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'insampleYtildZsCon.png')
+            plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) + '_insampleYtildZsConStd.png')
         plt.show()
         plt.close()
 

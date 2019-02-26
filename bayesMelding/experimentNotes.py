@@ -1,3 +1,5 @@
+
+
 14/02/2019:
 For in-sample prediction for the data assimilation model, since observations Zhat have a nugget term, so Zhat|Zhat, Ztilde still has a distribution, 
 so still have RMSE. However, since model outputs Ztilde do not have a nugget term, Ztild|Zhat, Ztild = Ztild|Ztild?, and the predicted mean is the same as Ztilde,

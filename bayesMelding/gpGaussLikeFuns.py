@@ -315,7 +315,7 @@ def log_py_giv_par(theta, X, y, OMEGA = 1e-6):
     return log_like
 
 def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, crossValFlag = False,  SEED=None, numMo = None, useSimData =False, grid= False, \
-    predicMo = False, predicCov = True, conZhatZtilde= False, marginZhat=False, conditionZhat = True, gp_deltas_modelOut = True, marginZtilde=False, index_Xaxis =True, withPrior= False, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
+    predicMo = False,  gp_deltas_modelOut = True, withPrior= False, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
