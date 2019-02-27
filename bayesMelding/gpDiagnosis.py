@@ -319,7 +319,7 @@ def log_py_giv_par(theta, X, y, OMEGA = 1e-6):
 
 def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, crossValFlag = False,  SEED=None, numMo = None, useSimData =False, grid= False, \
     predicMo = False, indivError = True, index_Xaxis =True, conditionZhat = True,  marginZtilde=False, conZhatZtilde= False, marginZhat=False, \
-    gp_deltas_modelOut = True, withPrior= False, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
+    gp_deltas_modelOut = True, withPrior= False, a_bias_poly_deg = 5, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
@@ -371,11 +371,24 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 
     mu_train = np.zeros(len(y_train))
 
-    X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
-    n_row = X_tildZs_mean.shape[0]
-    tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
-    X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
-    mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    if a_bias_poly_deg ==2:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    else:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend0 = np.hstack((X_tildZs_mean, tmp0))
+        tmp1 = np.array([X_tildZs[i]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
+        tmp1 = np.array([np.mean(tmp1[i], axis =0) for i in range(len(y_tildZs))])
+        tmp2 = np.array([X_tildZs[i][:,0] * X_tildZs[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
+        tmp2 = np.array([np.mean(tmp2[i]) for i in range(len(y_tildZs))])
+        tmp2 = tmp2.reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((tmp1, tmp2, X_tildZs_mean_extend0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
 
     mu_hatTildZs = np.concatenate((mu_train, mu_tildZs))
 
@@ -734,7 +747,11 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         cmap.set_under("crimson")
         cmap.set_over('black')
 
-        bounds = np.array([-np.ceil(maxAbs), -4, -2, -1, 1, 2, 4, np.ceil(maxAbs)])
+        if maxAbs >4:
+            bounds = np.array([-np.ceil(maxAbs), -4, -2, -1, 1, 2, 4, np.ceil(maxAbs)])
+        else:
+            bounds = np.array([-np.ceil(maxAbs), -2, -1, 1, 2,  np.ceil(maxAbs)])
+            cmap = mpl.colors.ListedColormap(["blue", 'cyan', 'white', 'green',  "red"])
         norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
         # residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
@@ -1080,7 +1097,11 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             cmap = mpl.colors.ListedColormap(["#00007F", "blue",'cyan', 'white', 'green', "red", "#7F0000"])
             cmap.set_under("crimson")
             cmap.set_over('black')
-            bounds = np.array([-np.ceil(maxAbs), -4, -2, -1, 1, 2, 4, np.ceil(maxAbs)])
+            if maxAbs >4:
+                bounds = np.array([-np.ceil(maxAbs), -4, -2, -1, 1, 2, 4, np.ceil(maxAbs)])
+            else:
+                bounds = np.array([-np.ceil(maxAbs), -2, -1, 1, 2,  np.ceil(maxAbs)])
+                cmap = mpl.colors.ListedColormap(["blue", 'cyan', 'white', 'green',  "red"])
             norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
             # residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
@@ -1144,12 +1165,25 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     y_test = y_tildZs
     index = np.arange(len(y_test))
     # The following is just for Ztilde ~ MVN(mu, COV)
-    X_test_mean = np.array([np.mean(X_test[i], axis=0) for i in range(len(y_tildZs))])
-    print('Shape of X_test_mean ' + str(X_test_mean.shape))
-    n_row = X_test_mean.shape[0]
-    tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
-    X_test_mean_extend = np.hstack((X_test_mean, tmp0))
-    mu_test = np.dot(X_test_mean_extend, a_bias_coefficients)
+    if a_bias_poly_deg ==2:
+        X_test_mean = np.array([np.mean(X_test[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_test_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_test_mean_extend = np.hstack((X_test_mean, tmp0))
+        mu_test = np.dot(X_test_mean_extend, a_bias_coefficients)
+    else:
+        X_test_mean = np.array([np.mean(X_test[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_test_mean_extend0 = np.hstack((X_test_mean, tmp0))
+        tmp1 = np.array([X_test[i]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
+        tmp1 = np.array([np.mean(tmp1[i], axis =0) for i in range(len(y_tildZs))])
+        tmp2 = np.array([X_test[i][:,0] * X_test[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
+        tmp2 = np.array([np.mean(tmp2[i]) for i in range(len(y_tildZs))])
+        tmp2 = tmp2.reshape(n_row,1)
+        X_test_mean_extend = np.hstack((tmp1, tmp2, X_test_mean_extend0))
+        mu_test = np.dot(X_test_mean_extend, a_bias_coefficients)
+        
     if marginZtilde:
         mu_star =  mu_test
         print('length of y_test, mu_star' + str((len(y_test), len(mu_star))))
@@ -1251,7 +1285,11 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         cmap.set_under("crimson")
         cmap.set_over('black')
 
-        bounds = np.array([-np.ceil(maxAbs), -4, -2, -1, 1, 2, 4, np.ceil(maxAbs)])
+        if maxAbs >4:
+            bounds = np.array([-np.ceil(maxAbs), -4, -2, -1, 1, 2, 4, np.ceil(maxAbs)])
+        else:
+             bounds = np.array([-np.ceil(maxAbs), -2, -1, 1, 2,  np.ceil(maxAbs)])
+             cmap = mpl.colors.ListedColormap(["blue", 'cyan', 'white', 'green',  "red"])
         norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
         # residualsPlot = ax.scatter(X_mo[:, 0], X_mo[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)

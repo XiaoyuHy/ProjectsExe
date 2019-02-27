@@ -213,7 +213,7 @@ def log_like_gamma(w, shape, rate):
     return res
 
 def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_modelOut = False, withPrior= False, \
-    a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
+    a_bias_poly_deg = 5, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
@@ -262,11 +262,24 @@ def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_mod
 
     mu_hatZs = np.zeros(len(y_hatZs))
 
-    X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
-    n_row = X_tildZs_mean.shape[0]
-    tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
-    X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
-    mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    if a_bias_poly_deg ==2:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    else:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend0 = np.hstack((X_tildZs_mean, tmp0))
+        tmp1 = np.array([X_tildZs[i]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
+        tmp1 = np.array([np.mean(tmp1[i], axis =0) for i in range(len(y_tildZs))])
+        tmp2 = np.array([X_tildZs[i][:,0] * X_tildZs[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
+        tmp2 = np.array([np.mean(tmp2[i]) for i in range(len(y_tildZs))])
+        tmp2 = tmp2.reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((tmp1, tmp2, X_tildZs_mean_extend0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
 
     mu_hatTildZs = np.concatenate((mu_hatZs, mu_tildZs))
 
@@ -302,7 +315,7 @@ def log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_mod
     return log_pos
 
 def log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_modelOut = True, withPrior= False, \
-    a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
+    a_bias_poly_deg = 5, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
@@ -367,11 +380,24 @@ def log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_
 
     mu_hatZs = np.zeros(len(y_hatZs))
 
-    X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
-    n_row = X_tildZs_mean.shape[0]
-    tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
-    X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
-    mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    if a_bias_poly_deg ==2:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    else:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend0 = np.hstack((X_tildZs_mean, tmp0))
+        tmp1 = np.array([X_tildZs[i]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
+        tmp1 = np.array([np.mean(tmp1[i], axis =0) for i in range(len(y_tildZs))])
+        tmp2 = np.array([X_tildZs[i][:,0] * X_tildZs[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
+        tmp2 = np.array([np.mean(tmp2[i]) for i in range(len(y_tildZs))])
+        tmp2 = tmp2.reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((tmp1, tmp2, X_tildZs_mean_extend0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
 
     mu_hatTildZs = np.concatenate((mu_hatZs, mu_tildZs))
 
@@ -483,7 +509,10 @@ def log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_
         grads_par_covPars[i] = -0.5 * np.sum(inver_C * grad_C[i]) + 0.5 * np.dot(y - mu_hatTildZs, linalg.solve_triangular(l_chol_C.T, \
             linalg.solve_triangular(l_chol_C, temp, lower=True)))
     # gradients of the jont covariance matrix with respect to a_bias
-    tmp = np.zeros((n_hatZs,X_hatZs.shape[1] + 1))
+    if a_bias_poly_deg == 2:
+        tmp = np.zeros((n_hatZs,X_hatZs.shape[1] + 1))
+    else:
+        tmp = np.zeros((n_hatZs,X_hatZs.shape[1] + 1 + a_bias_poly_deg -X_hatZs.shape[1]))
 
     X_all_extend = np.vstack((tmp, X_tildZs_mean_extend))
 
@@ -504,7 +533,7 @@ def log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_
     return [log_pos, grads_all_pars]
 
 def minus_log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_deltas_modelOut = True, withPrior= False, \
-    a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
+    a_bias_poly_deg = 5, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
@@ -569,11 +598,24 @@ def minus_log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZ
 
     mu_hatZs = np.zeros(len(y_hatZs))
 
-    X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
-    n_row = X_tildZs_mean.shape[0]
-    tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
-    X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
-    mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    if a_bias_poly_deg ==2:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    else:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend0 = np.hstack((X_tildZs_mean, tmp0))
+        tmp1 = np.array([X_tildZs[i]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
+        tmp1 = np.array([np.mean(tmp1[i], axis =0) for i in range(len(y_tildZs))])
+        tmp2 = np.array([X_tildZs[i][:,0] * X_tildZs[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
+        tmp2 = np.array([np.mean(tmp2[i]) for i in range(len(y_tildZs))])
+        tmp2 = tmp2.reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((tmp1, tmp2, X_tildZs_mean_extend0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
 
     mu_hatTildZs = np.concatenate((mu_hatZs, mu_tildZs))
 
@@ -584,7 +626,6 @@ def minus_log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZ
     joint_log_like  = -np.sum(np.log(np.diag(l_chol_C))) - 0.5 * np.dot(y - mu_hatTildZs, u) - 0.5 * n_bothZs * np.log(2*np.pi) 
 
     if withPrior:
-
         #compute the likelihood of the gamma priors
         sigma_shape = 1.2 
         sigma_rate = 0.2 
@@ -683,7 +724,10 @@ def minus_log_obsZs_giv_par_with_grad(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZ
         grads_par_covPars[i] = -0.5 * np.sum(inver_C * grad_C[i]) + 0.5 * np.dot(y - mu_hatTildZs, linalg.solve_triangular(l_chol_C.T, \
             linalg.solve_triangular(l_chol_C, temp, lower=True)))
     # gradients of the jont covariance matrix with respect to a_bias
-    tmp = np.zeros((n_hatZs,X_hatZs.shape[1] + 1))
+    if a_bias_poly_deg == 2:
+        tmp = np.zeros((n_hatZs,X_hatZs.shape[1] + 1))
+    else:
+        tmp = np.zeros((n_hatZs,X_hatZs.shape[1] + 1 + a_bias_poly_deg - X_hatZs.shape[1]))
 
     X_all_extend = np.vstack((tmp, X_tildZs_mean_extend))
 
@@ -786,11 +830,24 @@ def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_delt
 
     mu_hatZs = np.zeros(len(y_hatZs))
 
-    X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
-    n_row = X_tildZs_mean.shape[0]
-    tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
-    X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
-    mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    if a_bias_poly_deg ==2:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    else:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend0 = np.hstack((X_tildZs_mean, tmp0))
+        tmp1 = np.array([X_tildZs[i]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
+        tmp1 = np.array([np.mean(tmp1[i], axis =0) for i in range(len(y_tildZs))])
+        tmp2 = np.array([X_tildZs[i][:,0] * X_tildZs[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
+        tmp2 = np.array([np.mean(tmp2[i]) for i in range(len(y_tildZs))])
+        tmp2 = tmp2.reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((tmp1, tmp2, X_tildZs_mean_extend0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
 
     mu_hatTildZs = np.concatenate((mu_hatZs, mu_tildZs))
 
@@ -826,8 +883,8 @@ def minus_log_obsZs_giv_par(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, gp_delt
 
     return minus_log_pos
 
-def minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, modelBias, gp_deltas_modelOut = False, \
-    a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
+def minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, a_bias_poly_deg, modelBias, gp_deltas_modelOut = False, \
+    rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
@@ -876,11 +933,24 @@ def minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, 
 
     mu_hatZs = np.zeros(len(y_hatZs))
 
-    X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
-    n_row = X_tildZs_mean.shape[0]
-    tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
-    X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
-    mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    if a_bias_poly_deg ==2:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    else:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend0 = np.hstack((X_tildZs_mean, tmp0))
+        tmp1 = np.array([X_tildZs[i]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
+        tmp1 = np.array([np.mean(tmp1[i], axis =0) for i in range(len(y_tildZs))])
+        tmp2 = np.array([X_tildZs[i][:,0] * X_tildZs[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
+        tmp2 = np.array([np.mean(tmp2[i]) for i in range(len(y_tildZs))])
+        tmp2 = tmp2.reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((tmp1, tmp2, X_tildZs_mean_extend0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
 
     mu_hatTildZs = np.concatenate((mu_hatZs, mu_tildZs))
 
@@ -916,7 +986,7 @@ def minus_log_obsZs_giv_par_of_cov(theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs, 
 
     return minus_log_pos
 
-def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat, seed, numMo):
+def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, poly_deg, num_par, method, bounds, repeat, seed, numMo):
     res = []
     count1 = 0
     LBFGSB_status = False
@@ -925,22 +995,22 @@ def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withP
             if gpdtsMo:
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 3.5, 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
                 np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 3.5, 1)), \
-                np.log(np.random.gamma(1., np.sqrt(num_par), num_par)),  np.zeros(4)), axis=0)     
+                np.log(np.random.gamma(1., np.sqrt(num_par), num_par)),  np.zeros(4 + poly_deg -2)), axis=0)     
             else:
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4)), axis=0)
+                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4 + poly_deg -2)), axis=0)
             print('initial theta in optim_fun :' + str(initial_theta))
             if useGradsFlag:
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                                x0=initial_theta, method=method,
                                jac=True, bounds = bounds,
-                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior, poly_deg),
                                options={'maxiter': 2000, 'disp': False})
             else:
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
                                x0=initial_theta, method=method,
                                jac=False, bounds = bounds,
-                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior, poly_deg),
                                options={'maxiter': 2000, 'disp': False})
             print('The ' + str(count1) + ' repeat of optimisation in optim_fun')
         except:
@@ -951,7 +1021,7 @@ def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withP
             res.append(temp_res)
             print('theta from the ' + str(count1) + ' repeat of optimisation with LBFGSB in optim_fun is ' + str(tmp_res['x']))
             logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
-                gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+                gpdtsMo,  withPrior, poly_deg)
             print('grads at theta from the ' + str(count1) + ' repeat of optimisation with LBFGSB in optim_fun is ' + str(grads_at_resOptim))
             flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
             # if gradients from the first optimisation is zero, break out of the loop
@@ -983,11 +1053,11 @@ def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withP
                     tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                                    x0=tmp_res['x'], method='BFGS',
                                    jac=True,
-                                   args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                                   args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior, poly_deg),
                                    options={'maxiter': 2000, 'disp': False})
                     print('theta from the ' + str(count1) + ' repeat of optimisation with BFGS in optim_fun is ' + str(tmp_res['x']))
                     logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
-                        gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+                         gpdtsMo,  withPrior, poly_deg)
                     print('grads at theta from the ' + str(count1) + ' repeat of optimisation with BFGS in optim_fun is ' + str(grads_at_resOptim))
                     flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
                     # if gradients from the BFGS optimisation is zero, break out of the loop
@@ -998,7 +1068,7 @@ def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withP
                         print('BFGS optmisation converged successfully at the '+ str(count1) + ' repeat of optimisation in optim_fun.')
                         print('minus_log_like for repeat ' + str(count1)+ ' with BFGS in optim_fun is ' + str(tmp_res['fun']))
                         print('parameters after optimisation with BFGS in optim_fun :'  + \
-                        str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]]))
+                        str([np.exp(np.array(tmp_res['x'])[:-(4 + poly_deg -2)]), np.array(tmp_res['x'])[-(4 + poly_deg -2):]]))
 
                  #        print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
                  # ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS in optim_fun :'  + str(np.array(tmp_res['hess_inv']))
@@ -1020,7 +1090,7 @@ def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withP
     else:
         return [np.array(tmp_res['x']), tmp_res['fun'], np.array(tmp_res['hess_inv']), tmp_res['success'], tmp_res['message']]
 
-def optim_RndStart_BFGS(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat, seed, numMo, round):
+def optim_RndStart_BFGS(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, poly_deg, num_par, method, bounds, repeat, seed, numMo, round):
     print('Starting the ' + str(round) + ' round of optimisation in optim_RndStart_BFGS')
     count = 0
     res = []
@@ -1029,23 +1099,23 @@ def optim_RndStart_BFGS(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsF
             if gpdtsMo:
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 3.5, 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
                 np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 3.5, 1)), \
-                np.log(np.random.gamma(1., np.sqrt(num_par), num_par)),  np.zeros(4)), axis=0)  
+                np.log(np.random.gamma(1., np.sqrt(num_par), num_par)),  np.zeros(4 + poly_deg -2)), axis=0)  
                 # initial_theta = np.array([2.84165709, -0.32334302,  1.31136631,  5.96299062, -7.29752516,  0.81010198, -0.52785488,  0.63124765, -2.55814163])
             else:
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4)), axis=0)
+                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4 + poly_deg -2)), axis=0)
             print('initial theta in optim_RndStart_BFGS :' + str(initial_theta))
             if useGradsFlag:
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                                    x0=initial_theta, method='BFGS',
                                    jac=True,
-                                   args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                                   args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior, poly_deg),
                                    options={'maxiter': 2000, 'disp': False})
             else:
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
                                x0=initial_theta, method=method,
                                jac=False, bounds = bounds,
-                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior, poly_deg),
                                options={'maxiter': 2000, 'disp': False})
             print('The ' + str(count) + ' repeat of optimisation in optim_RndStart_BFGS')
         except:
@@ -1056,7 +1126,7 @@ def optim_RndStart_BFGS(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsF
             res.append(temp_res)
             print('theta from the ' + str(count) + ' repeat of optimisation with BFGS is ' + str(tmp_res['x']))
             logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
-                gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+                 gpdtsMo,  withPrior, poly_deg)
             print('grads at theta from the ' + str(count) + ' repeat of optimisation with BFGS is ' + str(grads_at_resOptim))
             flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
             # if gradients from the BFGS optimisation is zero, break out of the loop
@@ -1066,7 +1136,7 @@ def optim_RndStart_BFGS(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsF
             if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero) :
                 print('BFGS optmisation converged successfully at the '+ str(count) + ' round of optimisation.')
                 print('minus_log_like for repeat ' + str(count)+ ' with BFGS is ' + str(tmp_res['fun']))
-                print('parameters after optimisation with BFGS :'  + str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]]))
+                print('parameters after optimisation with BFGS :'  + str([np.exp(np.array(tmp_res['x'])[:-(4 + poly_deg -2)]), np.array(tmp_res['x'])[-(4 + poly_deg -2):]]))
                 print('covariance of pars after optimisation with BFGS :'  + str(np.array(tmp_res['hess_inv'])))
                 print('Optim status withPrior is ' + str(withPrior) + \
                 ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['success'])))
@@ -1082,11 +1152,11 @@ def optim_RndStart_BFGS(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsF
     res = res.T
     print('minus_log_like for repeat ' + str(repeat) + ' is ' + str(res[1, :]))
     i = np.argmin(res[1,:])
-    print('parameters after optimisation with BFGS is ' + str([np.exp(np.array(res[0, :][i])[:-4]), np.array(res[0, :][i])[-4:]]))
+    print('parameters after optimisation with BFGS is ' + str([np.exp(np.array(res[0, :][i])[:-(4 + poly_deg -2)]), np.array(res[0, :][i])[-(4 + poly_deg -2):]]))
     
     return [np.array(res[0, :][i]), np.array(res[1, :][i]), np.array(res[2, :][i]), np.array(res[3, :][i]), np.array(res[4, :][i])]
 
-def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat, seed, numMo, round):
+def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, poly_deg, num_par, method, bounds, repeat, seed, numMo, round):
     print('Starting the ' + str(round) + ' round of optimisation in optim_RndStart')
     count = 0
     LBFGSB_status = False
@@ -1097,22 +1167,22 @@ def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, 
             if gpdtsMo:
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 3.5, 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
                 np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 3.5, 1)), \
-                np.log(np.random.gamma(1., np.sqrt(num_par), num_par)),  np.zeros(4)), axis=0)     
+                np.log(np.random.gamma(1., np.sqrt(num_par), num_par)),  np.zeros(4 + poly_deg -2)), axis=0)     
             else:
                 initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
-                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4)), axis=0)
+                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4 + poly_deg -2)), axis=0)
             print('initial theta in optim_RndStart :' + str(initial_theta))
             if useGradsFlag:
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                                x0=initial_theta, method=method,
                                jac=True, bounds = bounds,
-                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior, poly_deg),
                                options={'maxiter': 2000, 'disp': False})
             else:
                 tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
                                x0=initial_theta, method=method,
                                jac=False, bounds = bounds,
-                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior, poly_deg),
                                options={'maxiter': 2000, 'disp': False})
             print('The ' + str(count) + ' repeat of optimisation in optim_RndStart')
         except:
@@ -1120,7 +1190,7 @@ def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, 
         if tmp_res['fun'] is not None: # if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
             print('theta from the ' + str(count) + ' repeat of optimisation with LBFGSB is ' + str(tmp_res['x']))
             logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
-                gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+                gpdtsMo, withPrior, poly_deg)
             print('grads at theta from the ' + str(count) + ' repeat of optimisation with LBFGSB is ' + str(grads_at_resOptim))
             flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
             # if gradients from the first optimisation is zero, break out of the loop
@@ -1128,7 +1198,7 @@ def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, 
                 LBFGSB_status = True
                 print('LBFGSB optmisation converged successfully at the '+ str(count) + ' repeat of optimisation.')
         
-                print('parameters after optimisation withPrior  with LBFGSB :'  + str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]]))
+                print('parameters after optimisation withPrior  with LBFGSB :'  + str([np.exp(np.array(tmp_res['x'])[:-(4 + poly_deg -2)]), np.array(tmp_res['x'])[-(4 + poly_deg -2):]]))
                 # print 'covariance of pars after optimisation withPrior is ' + str(withPrior) + \
                 #  ' & gpdtsMo is ' + str(gpdtsMo) + ' with LBFGSB :'  + str(np.array(tmp_res['hess_inv'].todense()))
                 # print 'Optim status withPrior is ' + str(withPrior) + \
@@ -1148,11 +1218,11 @@ def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, 
                     tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                                    x0=tmp_res['x'], method='BFGS',
                                    jac=True,
-                                   args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                                   args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior, poly_deg),
                                    options={'maxiter': 2000, 'disp': False})
                     print('theta from the ' + str(count) + ' repeat of optimisation with BFGS is ' + str(tmp_res['x']))
                     logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
-                        gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+                         gpdtsMo,  withPrior, poly_deg)
                     print('grads at theta from the ' + str(count) + ' repeat of optimisation with BFGS is ' + str(grads_at_resOptim))
                     flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
                     # if gradients from the BFGS optimisation is zero, break out of the loop
@@ -1162,7 +1232,7 @@ def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, 
                     if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
                         print('BFGS optmisation converged successfully at the '+ str(count) + ' round of optimisation.')
                         print('minus_log_like for repeat ' + str(count)+ ' with BFGS is ' + str(tmp_res['fun']))
-                        print('parameters after optimisation with BFGS :'  + str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]]))
+                        print('parameters after optimisation with BFGS :'  + str([np.exp(np.array(tmp_res['x'])[:-(4 + poly_deg -2)]), np.array(tmp_res['x'])[-(4 + poly_deg -2):]]))
                         print('covariance of pars after optimisation with BFGS :'  + str(np.array(tmp_res['hess_inv'])))
                         print('Optim status withPrior is ' + str(withPrior) + \
                         ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['success'])))
@@ -1178,13 +1248,13 @@ def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, 
                         while repeat_another != max_repeat:
                             repeat_another += 1
                             print('repeat_another now is ' + str(repeat_another))
-                            mu, log_like, cov, status, message = optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat_another,seed, numMo)
-                            ogPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(mu, X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
-                        gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+                            mu, log_like, cov, status, message = optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, poly_deg, num_par, method, bounds, repeat_another,seed, numMo)
+                            logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(mu, X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
+                        gpdtsMo,  withPrior, poly_deg)
                             print('grads at theta from the repeat ' + str(repeat_another) + ' optimisation is ' + str(grads_at_resOptim))
                             flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
                             tmp = np.diag(cov)
-                            variance_log_covPars = tmp[:-4]
+                            variance_log_covPars = tmp[:-(4 + poly_deg -2)]
                             print('np.max(np.abs(variance_log_covPars)) in optim_RndStart -secondPart is ' + str(np.max(np.abs(variance_log_covPars))))
                             if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
                                 repeat_optim_status = True
@@ -1200,11 +1270,11 @@ def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, 
     else:
         return [np.array(tmp_res['x']), tmp_res['fun'], np.array(tmp_res['hess_inv']), tmp_res['success'], tmp_res['message']]
 
-def optim_NotRndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat, seed, numMo, round=1):
+def optim_NotRndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, poly_deg, num_par, method, bounds, repeat, seed, numMo, round=1):
     print('Starting the ' + str(round) + ' round of optimisation in optim_NotRndStart')
     count = 0
     max_repeat = 2
-    input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo - 50) + '/seed' + str(seed) + '/'
+    input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo - 50) + '/seed' + str(seed) + '/'
     resOptim_in = open(input_folder + 'resOptim.pkl', 'rb')
     resOptim = pickle.load(resOptim_in)
     initial_theta = resOptim['mu']
@@ -1212,11 +1282,11 @@ def optim_NotRndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFla
     tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
                    x0=initial_theta, method='BFGS',
                    jac=True,
-                   args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior),
+                   args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior, poly_deg),
                    options={'maxiter': 2000, 'disp': False})
     print('theta from optimisation with BFGS when numMo is ' + str(numMo) + ' is ' + str(tmp_res['x']))
     logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
-        gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+        gpdtsMo,  withPrior, poly_deg)
     print('grads at theta from optimisation with BFGS when numMo is ' + str(numMo) + ' is ' + str(grads_at_resOptim))
     flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
     # if gradients from the BFGS optimisation is zero, break out of the loop
@@ -1228,7 +1298,7 @@ def optim_NotRndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFla
         print('minus_log_like with BFGS is when numMo is ' + str(numMo) + ' is ' + str(tmp_res['fun']))
         print('parameters after optimisation withPrior is ' + str(withPrior) + \
         ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + \
-        str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-4:]]))
+        str([np.exp(np.array(tmp_res['x'])[:-4]), np.array(tmp_res['x'])[-(4 + poly_deg -2):]]))
         print('covariance of pars after optimisation with BFGS :'  + str(np.array(tmp_res['hess_inv'])))
         print('Optim status with BFGS :'  + str(np.array(tmp_res['success'])))
         print('Optim message with BFGS :'  + str(np.array(tmp_res['message'])))
@@ -1243,22 +1313,27 @@ def optim_NotRndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFla
         while repeat_another != max_repeat:
             repeat_another += 1
             print('repeat_another now is ' + str(repeat_another))
-            mu, log_like, cov, status, message = optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat_another,seed, numMo)
+            mu, log_like, cov, status, message = optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, poly_deg, num_par, method, bounds, repeat_another,seed, numMo)
             ogPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(mu, X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
-        gp_deltas_modelOut = gpdtsMo,  withPrior= withPrior)
+        gpdtsMo, withPrior, poly_deg)
             print('grads at theta from the repeat ' + str(repeat_another) + ' optimisation is ' + str(grads_at_resOptim))
             flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
             tmp = np.diag(cov)
-            variance_log_covPars = tmp[:-4]
+            variance_log_covPars = tmp[:-(4 + poly_deg -2)]
             print('np.max(np.abs(variance_log_covPars)) in optim_NotRndStart - secondPart is ' + str(np.max(np.abs(variance_log_covPars))))
             if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero):
                 break
         return [mu, log_like, cov, status, message]
 
-def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, useGradsFlag = False, repeat=3, seed =188, numMo =50, rounds =1, method='L-BFGS-B', rbf=True, OMEGA = 1e-6, \
+def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, poly_deg, gpdtsMo=False, useGradsFlag = False, repeat=3, seed =188, numMo =50, rounds =1, method='L-BFGS-B', rbf=True, OMEGA = 1e-6, \
     bounds = ((-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-50, 50), (-50, 50), (-50, 50), (-50, 50))): 
     print('starting optimising when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
          '& useGradsFlag is ' + str(useGradsFlag)) 
+    if poly_deg == 2:
+        bounds = bounds
+    else:
+        bounds = ((-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-50, 50), (-50, 50), (-50, 50),(-50, 50), (-50, 50), (-50, 50), (-50, 50))
+    print('bounds is ' + str(bounds))
     if rbf:
         num_par=1
     else:
@@ -1267,7 +1342,7 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
     if numMo == 50:
         # rounds =3
         for round in range(rounds):
-            res_tmp = optim_RndStart_BFGS(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat,seed, numMo, round)
+            res_tmp = optim_RndStart_BFGS(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, poly_deg, num_par, method, bounds, repeat,seed, numMo, round)
             # print 'res_tmp is ' + str(res_tmp)
             res.append(res_tmp)
         res = np.array(res)
@@ -1283,11 +1358,11 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
     else:
         for round in range(rounds):
             if round ==0:
-                res_tmp = optim_NotRndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat,seed, numMo, round)
+                res_tmp = optim_NotRndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, poly_deg, num_par, method, bounds, repeat,seed, numMo, round)
                 # print 'res_tmp is ' + str(res_tmp)
                 res.append(res_tmp)
             else:
-                res_tmp = optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat,seed, numMo, round)
+                res_tmp = optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, poly_deg, num_par, method, bounds, repeat,seed, numMo, round)
                 # print 'res_tmp is ' + str(res_tmp)
                 res.append(res_tmp)
         res = np.array(res)
@@ -1295,7 +1370,7 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
         print('minus_log_like for ' + str(rounds) + ' rounds is ' + str(res[1, :]))
         i = np.argmin(res[1,:])
         print('log_cov_parameters plus model bias after optimisation  is :'  + str(np.array(res[0, :][i])))
-        print('parameters after optimisation withPrior is  :'  + str([np.exp(np.array(res[0, :][i])[:-4]), np.array(res[0, :][i])[-4:]]))
+        print('parameters after optimisation withPrior is  :'  + str([np.exp(np.array(res[0, :][i])[:-(4 + poly_deg -2)]), np.array(res[0, :][i])[-(4 + poly_deg -2):]]))
         print('covariance of pars after optimisation  :'  + str(np.array(res[2, :][i])))
         print('Optim status  :'  + str(np.array(res[3, :][i])))
         print('Optim message :'  + str(np.array(res[4, :][i])))
@@ -1336,7 +1411,7 @@ def check_grads():
 
     areal_hatZs_in = open(input_folder + 'areal_hatZs.pkl', 'rb')
     areal_hatZs = pickle.load(areal_hatZs_in)
-    modelBias = np.array([ 1.97191694,  5.47022754 , 5.22854712, 2.5])
+    modelBias = np.array([ 1.97191694, 2.5, 2.1, 2.6, 5.47022754 , 5.22854712, 2.5])
     initial_theta=np.concatenate((np.array([np.log(1.5), np.log(0.1), np.log(0.1), np.log(1.0),np.log(0.2)]),modelBias), axis=0)
     _, grads_computed = log_obsZs_giv_par_with_grad(initial_theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs,gp_deltas_modelOut = True)
     grads_approx = gradsApprox(initial_theta, X_hatZs, y_hatZs, X_tildZs, y_tildZs,  withPrior= False, gp_deltas_modelOut = True)
@@ -1481,10 +1556,10 @@ if __name__ == '__main__':
 
     # print 'running time for HMC sampler is '  + str(end - start) + ' seconds'
     if args.crossValFlag:    
-        mu, cov = optimise(X_train, y_train, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
+        mu, cov = optimise(X_train, y_train, X_tildZs, y_tildZs, args.withPrior,  args.poly_deg, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
         # mu = optimise(X_train, y_train, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED) # TNC optimization
     else: 
-        mu, cov = optimise(X_train, y_train, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED, args.numMo)
+        mu, cov = optimise(X_train, y_train, X_tildZs, y_tildZs, args.withPrior, args.poly_deg, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED, args.numMo)
 
     end = default_timer()
     print('running time for optimisation  is '  + str(end - start) + ' seconds')
@@ -1559,7 +1634,7 @@ if __name__ == '__main__':
             y_train = y_hatZs[:-28]
             y_test = y_hatZs[-28:]
             predic_accuracy = gpGaussLikeFuns.predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo, \
-                args.useSimData, args.grid, args.predicMo)
+                args.useSimData, args.grid, args.predicMo, args.poly_deg)
             # print 'predic_accuracy for seed ' + str(args.SEED)  + ' is ' + '{:.1%}'.format(predic_accuracy)
         
 

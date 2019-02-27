@@ -315,7 +315,7 @@ def log_py_giv_par(theta, X, y, OMEGA = 1e-6):
     return log_like
 
 def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, crossValFlag = False,  SEED=None, numMo = None, useSimData =False, grid= False, \
-    predicMo = False,  gp_deltas_modelOut = True, withPrior= False, a_bias_poly_deg = 2, rbf = True, OMEGA = 1e-6):
+    predicMo = False, a_bias_poly_deg = 2, gp_deltas_modelOut = True, withPrior= False, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
@@ -367,11 +367,24 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 
     mu_train = np.zeros(len(y_train))
 
-    X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
-    n_row = X_tildZs_mean.shape[0]
-    tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
-    X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
-    mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    if a_bias_poly_deg ==2:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((X_tildZs_mean, tmp0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
+    else:
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_tildZs_mean_extend0 = np.hstack((X_tildZs_mean, tmp0))
+        tmp1 = np.array([X_tildZs[i]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
+        tmp1 = np.array([np.mean(tmp1[i], axis =0) for i in range(len(y_tildZs))])
+        tmp2 = np.array([X_tildZs[i][:,0] * X_tildZs[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
+        tmp2 = np.array([np.mean(tmp2[i]) for i in range(len(y_tildZs))])
+        tmp2 = tmp2.reshape(n_row,1)
+        X_tildZs_mean_extend = np.hstack((tmp1, tmp2, X_tildZs_mean_extend0))
+        mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
 
     mu_hatTildZs = np.concatenate((mu_train, mu_tildZs))
 
@@ -514,11 +527,6 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     pickle.dump(rmse, rmse_out) 
     rmse_out.close()
 
-    if not crossValFlag:
-        standardised_y_estimate = (mu_star - y_test)/np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
-        std_yEst_out = open(output_folder + 'std_yEst_inSample.pkl', 'wb')
-        pickle.dump(standardised_y_estimate, std_yEst_out)   
-    
 # The following code is for Zhat | Zhat, Ztilde
     LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
     for i in range(ntest):
@@ -528,6 +536,11 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     vstar[vstar < 0] = 1e-9
     vstar = vstar.reshape(ntest, )
     # print('In-sample estimated variance is ' + str(vstar))
+
+    if not crossValFlag:
+        standardised_y_estimate = (mu_star - y_test)/np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+        std_yEst_out = open(output_folder + 'std_yEst_inSample.pkl', 'wb')
+        pickle.dump(standardised_y_estimate, std_yEst_out)  
 
     avg_width_of_predic_var = np.mean(np.sqrt(vstar + np.exp(log_obs_noi_scale)**2))
 
@@ -558,13 +571,26 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     X_test = X_tildZs
     y_test = y_tildZs
     index = np.arange(len(y_test))
- 
-    X_test_mean = np.array([np.mean(X_test[i], axis=0) for i in range(len(y_tildZs))])
-    print('Shape of X_test_mean ' + str(X_test_mean.shape))
-    n_row = X_test_mean.shape[0]
-    tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
-    X_test_mean_extend = np.hstack((X_test_mean, tmp0))
-    mu_test = np.dot(X_test_mean_extend, a_bias_coefficients)
+
+    if a_bias_poly_deg ==2:
+        X_test_mean = np.array([np.mean(X_test[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_test_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_test_mean_extend = np.hstack((X_test_mean, tmp0))
+        mu_test = np.dot(X_test_mean_extend, a_bias_coefficients)
+    else:
+        X_test_mean = np.array([np.mean(X_test[i], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_tildZs_mean.shape[0]
+        tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
+        X_test_mean_extend0 = np.hstack((X_test_mean, tmp0))
+        tmp1 = np.array([X_test[i]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
+        tmp1 = np.array([np.mean(tmp1[i], axis =0) for i in range(len(y_tildZs))])
+        tmp2 = np.array([X_test[i][:,0] * X_test[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
+        tmp2 = np.array([np.mean(tmp2[i]) for i in range(len(y_tildZs))])
+        tmp2 = tmp2.reshape(n_row,1)
+        X_test_mean_extend = np.hstack((tmp1, tmp2, X_test_mean_extend0))
+        mu_test = np.dot(X_test_mean_extend, a_bias_coefficients)
+
     # The following is  for Ztilde|Zhat ~ MVN(mu, COV`)
     l_chol_ChatZs = compute_L_chol(C_hatZs)
     u3=linalg.solve_triangular(l_chol_ChatZs.T, linalg.solve_triangular(l_chol_ChatZs, y_train, lower=True))
