@@ -1339,7 +1339,7 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, poly_deg, gpdtsMo=
     else:
         num_par=X_hatZs.shape[1]  
     res = []
-    if numMo == 50:
+    if numMo == 500:
         # rounds =3
         for round in range(rounds):
             res_tmp = optim_RndStart_BFGS(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, poly_deg, num_par, method, bounds, repeat,seed, numMo, round)
@@ -1482,7 +1482,7 @@ if __name__ == '__main__':
                 '/folder_' + str(args.folder) + '/SEED_' + str(args.SEED) + '_withPrior_' + str(args.withPrior) + '_poly_deg_' + str(args.poly_deg) + \
                 '_repeat' + str(args.repeat) 
             else:
-                output_folder = args.output + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) 
+                output_folder = args.output + '/Data/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) 
         else:
             if args.oneRepPerJob:
                 output_folder = args.output + '/numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) + '/folder_' + str(args.folder) + \
@@ -1495,7 +1495,7 @@ if __name__ == '__main__':
         os.makedirs(output_folder)
     output_folder += '/'
     print('Output: ' + output_folder)
-
+    
     # check_grads()
     # test_fun(args.useCluster, args.SEED)
     # exit(-1)
@@ -1505,7 +1505,7 @@ if __name__ == '__main__':
 
     # X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_tildZs = simData.sim_hatTildZs_With_Plots(SEED = args.SEED, phi_Z_s = [args.lsZs], gp_deltas_modelOut = args.gpdtsMo, \
     #     phi_deltas_of_modelOut = [args.lsdtsMo], sigma_Zs = args.sigZs, sigma_deltas_of_modelOut = args.sigdtsMo)
-    input_folder = 'DataImogenFrGridMoNotCentre/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
+    input_folder = 'Data/FPstart2016020612_' + str(args.cntry) + '_numObs_' + str(args.numObs) + '_numMo_' + str(args.numMo) \
     + '/seed' + str(args.SEED) + '/'
     if args.useCluster:
         if args.usecntryFlag:

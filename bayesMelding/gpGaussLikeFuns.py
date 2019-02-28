@@ -6,17 +6,17 @@ import pickle
 import os
 import argparse
 from itertools import chain
-import statsmodels.api as sm
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import pyplot as plt
-import matplotlib.colors
-import matplotlib as mpl
+# import statsmodels.api as sm
+# from mpl_toolkits.mplot3d import Axes3D
+# from matplotlib import pyplot as plt
+# import matplotlib.colors
+# import matplotlib as mpl
 # plt.switch_backend('agg') # This line is for running code on cluster to make pyplot working on cluster
-from rpy2.robjects.packages import importr
-from rpy2.robjects import r
-import rpy2.robjects as ro
-from rpy2.robjects import numpy2ri
-from matplotlib.lines import Line2D
+# from rpy2.robjects.packages import importr
+# from rpy2.robjects import r
+# import rpy2.robjects as ro
+# from rpy2.robjects import numpy2ri
+# from matplotlib.lines import Line2D
 
 np.seterr(over='raise', divide='raise')
 
@@ -627,6 +627,7 @@ if __name__ == '__main__':
         help='flag for whether to use simulated data')
     p.add_argument('-grid', dest='grid', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether the predictions are produced for each grid')
     p.add_argument('-predicMo', dest='predicMo', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether to predict the value where model outputs are produced')
+    p.add_argument('-poly_deg', type=int, dest='poly_deg', default=2, help='degree of the polynomial function of the additive model bias')
 
     args = p.parse_args()
     if args.useSimData: 
@@ -660,7 +661,7 @@ if __name__ == '__main__':
 
     mu = resOptim['mu']
     print('theta from optimisation is ' + str(mu)) 
-    print(np.exp(mu[:-4]))
+    print(np.exp(mu[:-(4 + args.poly_deg -2)]))
    
     # tmp = list(np.log(np.array([20.20773792,  1.28349713  ,3.83773256, 1.47482164,  0.10713728]))) + [0.73782754, -0.44369921,  0.64953645, -2.61332868]
     # # tmp = list(np.log(np.array([22.14058558,  1.47980593,  3.33445096,  8.72246743,  0.07932848]))) + [0.87132649, -0.81637815,  0.17456605, -5.54637298]
@@ -711,5 +712,5 @@ if __name__ == '__main__':
         print('shape of X_test, y_test'+ str((X_test.shape, y_test.shape)))
 
     predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo, \
-        args.useSimData, args.grid, args.predicMo)
+        args.useSimData, args.grid, args.predicMo, args.poly_deg)
          

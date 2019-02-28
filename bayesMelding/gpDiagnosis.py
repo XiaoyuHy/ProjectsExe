@@ -318,8 +318,8 @@ def log_py_giv_par(theta, X, y, OMEGA = 1e-6):
     return log_like
 
 def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, crossValFlag = False,  SEED=None, numMo = None, useSimData =False, grid= False, \
-    predicMo = False, indivError = True, index_Xaxis =True, conditionZhat = True,  marginZtilde=False, conZhatZtilde= False, marginZhat=False, \
-    gp_deltas_modelOut = True, withPrior= False, a_bias_poly_deg = 5, rbf = True, OMEGA = 1e-6):
+    predicMo = False, a_bias_poly_deg = 5, indivError = True, index_Xaxis =True, conditionZhat = True,  marginZtilde=False, conZhatZtilde= False, marginZhat=False, \
+    gp_deltas_modelOut = True, withPrior= False, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
         num_len_scal = 1
@@ -1183,7 +1183,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         tmp2 = tmp2.reshape(n_row,1)
         X_test_mean_extend = np.hstack((tmp1, tmp2, X_test_mean_extend0))
         mu_test = np.dot(X_test_mean_extend, a_bias_coefficients)
-        
+
     if marginZtilde:
         mu_star =  mu_test
         print('length of y_test, mu_star' + str((len(y_test), len(mu_star))))
@@ -1315,15 +1315,16 @@ if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument('-SEED', type=int, dest='SEED', default=120, help='The simulation index')
     p.add_argument('-numObs', type=int, dest='numObs', default=128, help='Number of observations used in modelling')
-    p.add_argument('-numMo', type=int, dest='numMo', default=50, help='Number of model outputs used in modelling')
+    p.add_argument('-numMo', type=int, dest='numMo', default=500, help='Number of model outputs used in modelling')
     p.add_argument('-crossValFlag', dest='crossValFlag', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='whether to validate the model using cross validation')
     p.add_argument('-useSimData', dest='useSimData', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use simulated data')
     p.add_argument('-grid', dest='grid', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether the predictions are produced for each grid')
     p.add_argument('-predicMo', dest='predicMo', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether to predict the value where model outputs are produced')
+    p.add_argument('-poly_deg', type=int, dest='poly_deg', default=5, help='degree of the polynomial function of the additive model bias')
     p.add_argument('-indivError', dest='indivError', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether to individual std errors for GP diagnosis')
-    p.add_argument('-index_Xaxis', dest='index_Xaxis', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether X-axis is index for GP diagnosis')
+    p.add_argument('-index_Xaxis', dest='index_Xaxis', default=True,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether X-axis is index for GP diagnosis')
 
     args = p.parse_args()
     if args.useSimData: 
@@ -1332,7 +1333,10 @@ if __name__ == '__main__':
         input_folder = os.getcwd() + '/dataSimulated/numObs_200_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
     else:
         # input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
-        input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+        if args.poly_deg ==5:
+            input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+        else:
+            input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + 'PolyDeg2/'
 
     X_hatZs_in = open(input_folder + 'X_hatZs.pkl', 'rb')
     X_hatZs = pickle.load(X_hatZs_in) 
@@ -1356,8 +1360,15 @@ if __name__ == '__main__':
     resOptim = pickle.load(resOptim_in)
 
     mu = resOptim['mu']
+
     print('theta from optimisation is ' + str(mu)) 
-    print(np.exp(mu[:-4]))
+    print(np.exp(mu[:-(4 + args.poly_deg -2)]))
+
+    # when looking at the coefficients of the betas of a_bias, need to check its relative importance: beta/std(beta), not only Beta itself.
+    cov = resOptim['cov']
+    print('var of theta is' + str(np.diag(cov)))
+    relative_importance_of_betas = mu[-(4 + args.poly_deg -2 -1):]/np.sqrt(np.diag(cov)[-(4 + args.poly_deg -2 -1):])
+    print('relative_importance_of_betas is ' + str(relative_importance_of_betas))
    
     # tmp = list(np.log(np.array([20.20773792,  1.28349713  ,3.83773256, 1.47482164,  0.10713728]))) + [0.73782754, -0.44369921,  0.64953645, -2.61332868]
     # # tmp = list(np.log(np.array([22.14058558,  1.47980593,  3.33445096,  8.72246743,  0.07932848]))) + [0.87132649, -0.81637815,  0.17456605, -5.54637298]
@@ -1408,5 +1419,5 @@ if __name__ == '__main__':
         print('shape of X_test, y_test'+ str((X_test.shape, y_test.shape)))
 
     predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo, \
-        args.useSimData, args.grid, args.predicMo, args.indivError, args.index_Xaxis)
+        args.useSimData, args.grid, args.predicMo, args.poly_deg, args.indivError, args.index_Xaxis)
          
