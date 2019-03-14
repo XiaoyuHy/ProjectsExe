@@ -20,6 +20,7 @@ from matplotlib.lines import Line2D
 import scipy.stats as stats
 import gpValid_parUncerty
 import gpValid_parUncertyOverSeeds
+import gpValid_parUncerty_CI
 
 
 np.seterr(over='raise', divide='raise')
@@ -524,14 +525,39 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 		plt.show()
 		plt.close()
 
+		upper_interv_predic = mu_star + 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+		lower_interv_predic = mu_star - 2 * np.sqrt(vstar + np.exp(log_obs_noi_scale)**2)
+		upper_interval_rounded = np.round(upper_interv_predic, 1)
+		lower_interval_rounded = np.round(lower_interv_predic, 1)
+		# print 'rounded upper_interval is ' + str(upper_interval_rounded)
+		# print 'rounded lower_interval is ' + str(lower_interval_rounded)
+
 		lower_chol =  np.linalg.cholesky(cov_of_predic)
 		num_Outputs =  cov_of_predic.shape[0]
 		samples_Zs = []
+		succRate = []
 		for i in range(1000):
 			tmp = np.dot(lower_chol, np.random.normal(0., 1., num_Outputs))
+			sample_tmp = tmp + mu_star
 			tmp = np.dot(inv_G, tmp)
 			tmp = np.sort(tmp)
 			samples_Zs.append(tmp)
+
+			flag_in_confiInterv_r = (sample_tmp >= lower_interval_rounded) & (sample_tmp <= upper_interval_rounded)
+			flag_in_confiInterv_r = flag_in_confiInterv_r.astype(int)
+			count_in_confiInterv_r  = np.sum(flag_in_confiInterv_r.astype(int))
+			
+			succRate_tmp = np.round(count_in_confiInterv_r/np.float(len(y_test)), 3)
+			succRate.append(succRate_tmp)
+		succRate = np.array(succRate)
+		mean_succRate = np.mean(succRate)
+		std_succRate = np.std(succRate)
+		median_succRate = np.quantile(succRate, 0.5)
+		Lqunatile_succRate = np.quantile(succRate, 0.025)
+		Uqunatile_succRate = np.quantile(succRate, 0.975)
+		print('mean_succRate, std_succRate, Lqunatile_succRate, median_succRate, Uqunatile_succRate is ' + \
+			str((mean_succRate, std_succRate, Lqunatile_succRate, median_succRate, Uqunatile_succRate)))
+		
 		samples_Zs = np.array(samples_Zs)
 		print('shape of samples_Zs is ' + str(samples_Zs.shape))
 		Lqunatile = np.quantile(samples_Zs, 0.025, axis=0)
@@ -1402,161 +1428,6 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 
 	return succRate
 
-def plot_qq_parUncerty(parUncertyOverSeeds = False, numMo = 500, SEED=None, indivError = False, index_Xaxis =True):
-	if parUncertyOverSeeds:
-		samples_Zs = [] 
-		samples_yHat = [] 
-		samples_yTilde = []
-		seeds = [120, 121] + list(range(123,143)) + list(range(144, 160)) + list(range(161, 167)) + list(range(168, 177)) + list(range(178, 184)) + \
-		list(range(185,189)) + list(range(190,198))+ [199, 200, 201,202,204,205,206,208,209,210,212,213,215,216,217,218,219]
-		for seed in seeds:
-			input_folder = 'DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(seed) + '/'
-			tmp_in =  open(input_folder + 'all_samples_parUncerty.pkl', 'rb')
-			all_samples = pickle.load(tmp_in)
-			samples_Zs_tmp = all_samples[0]
-			samples_yHat_tmp = all_samples[1]
-			samples_yTilde_tmp = all_samples[2]
-
-			samples_Zs.append(samples_Zs_tmp)
-			samples_yHat.append(samples_yHat_tmp)
-			samples_yTilde.append(samples_yTilde_tmp)
-
-		samples_Zs = np.array(samples_Zs)
-		samples_yHat = np.array(samples_yHat) 
-		samples_yTilde = np.array(samples_yTilde)
-		print(samples_Zs.shape) 
-		print(samples_yHat.shape) 
-		print(samples_yTilde.shape) 
-
-		input_folder = 'DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_500/seed120/'
-
-		std_yEst_Zs_in = open(input_folder + 'std_yEst_outSample.pkl', 'rb')
-		std_yEst_Zs = pickle.load(std_yEst_Zs_in)
-
-		std_yEst_yHat_in = open(input_folder + 'std_yEst_inSampleConditionZhat.pkl', 'rb')
-		std_yEst_yHat = pickle.load(std_yEst_yHat_in)
-
-		std_yEst_yTilde_in = open(input_folder + 'std_yEst_inSampleCon.pkl', 'rb')
-		std_yEst_yTilde = pickle.load(std_yEst_yTilde_in)
-
-	else:
-		samples_Zs = [] 
-		samples_yHat = [] 
-		samples_yTilde = []
-		for i in range(1000):
-			input_folder = 'DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(SEED) + '/idx_theta' + str(i) + '/'
-			tmp_in =  open(input_folder + 'all_samples_parUncerty.pkl', 'rb')
-			all_samples = pickle.load(tmp_in)
-
-			samples_Zs_tmp = all_samples[0]
-			samples_yHat_tmp = all_samples[1]
-			samples_yTilde_tmp = all_samples[2]
-
-			samples_Zs.append(samples_Zs_tmp)
-			samples_yHat.append(samples_yHat_tmp)
-			samples_yTilde.append(samples_yTilde_tmp)
-
-		samples_Zs = np.array(samples_Zs)
-		samples_yHat = np.array(samples_yHat) 
-		samples_yTilde = np.array(samples_yTilde)
-		print(samples_Zs.shape) 
-		print(samples_yHat.shape) 
-		print(samples_yTilde.shape) 
-
-		input_folder = 'DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED)+'/'
-
-		std_yEst_Zs_in = open(input_folder + 'std_yEst_outSample.pkl', 'rb')
-		std_yEst_Zs = pickle.load(std_yEst_Zs_in)
-
-		std_yEst_yHat_in = open(input_folder + 'std_yEst_inSampleConditionZhat.pkl', 'rb')
-		std_yEst_yHat = pickle.load(std_yEst_yHat_in)
-
-		std_yEst_yTilde_in = open(input_folder + 'std_yEst_inSampleCon.pkl', 'rb')
-		std_yEst_yTilde = pickle.load(std_yEst_yTilde_in)
-
-	if parUncertyOverSeeds:
-		output_folder = 'DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/parUncertyOverSeeds' 
-	else:
-		output_folder = 'DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED) + '/parUncerty' 
-	if not os.path.exists(output_folder):
-		os.makedirs(output_folder)
-	output_folder +=  '/'
-	print('output_folder in plot_qq_parUncerty ' + str(output_folder))
-	#QQ plot for out-of-sample predictons of Zhat
-	Lqunatile = np.quantile(samples_Zs, 0.025, axis=0)
-	Uqunatile = np.quantile(samples_Zs, 0.975, axis=0)
-	num_Outputs = samples_Zs.shape[1]
-	std_norm_quantile = np.array([stats.norm.ppf((i-0.5)/num_Outputs) for i in range(1, num_Outputs+1)])
-	print(Lqunatile, Uqunatile)
-	exit(-1)
-
-	plt.figure
-	sm.qqplot(std_yEst_Zs, line='45')
-	plt.savefig(output_folder + 'SEED'+ str(SEED) +'OutSampQQ_indivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + 'NoCI.png')
-	plt.show()
-	plt.close()
-
-	plt.figure()
-	# sm.qqplot(standardised_y_estimate, line='45')
-	plt.scatter(std_norm_quantile, np.sort(std_yEst_Zs), marker = '.', color ='b', label='Truth')
-	plt.scatter(std_norm_quantile, Uqunatile, color = 'k', marker = '_', label='Upper_CI') 
-	plt.scatter(std_norm_quantile, Lqunatile, color = 'green', marker = '_', label='Lower_CI') 
-	plt.plot(std_norm_quantile, std_norm_quantile, color='r')
-	plt.xlabel('Theoretical Quantiles')
-	plt.ylabel('Sample Quantiles')
-	plt.legend(loc='best')
-	plt.savefig(output_folder + 'SEED'+ str(SEED) +'OutSampQQ_indivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.png')
-	plt.show()
-	plt.close()
-	# QQ plot for insample predeiction for Zhat
-	Lqunatile = np.quantile(samples_yHat, 0.025, axis=0)
-	Uqunatile = np.quantile(samples_yHat, 0.975, axis=0)
-	num_Outputs = samples_yHat.shape[1]
-	
-	std_norm_quantile = np.array([stats.norm.ppf((i-0.5)/num_Outputs) for i in range(1, num_Outputs+1)])
-
-	plt.figure
-	sm.qqplot(std_yEst_yHat, line='45')
-	plt.savefig(output_folder + 'SEED'+ str(SEED) +'QQ_inSampConZhat_IndivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + 'NoCI.png')   
-	plt.show()
-	plt.close()
-
-	plt.figure()
-	plt.scatter(std_norm_quantile, np.sort(std_yEst_yHat),  marker = '.', color ='b', label='Truth')
-	plt.scatter(std_norm_quantile, Uqunatile, color = 'k', marker = '_', label='Upper_CI') 
-	plt.scatter(std_norm_quantile, Lqunatile, color = 'green', marker = '_', label='Lower_CI') 
-	plt.plot(std_norm_quantile, std_norm_quantile, color='r')
-	plt.xlabel('Theoretical Quantiles')
-	plt.ylabel('Sample Quantiles')
-	plt.legend(loc='best')
-	plt.savefig(output_folder + 'SEED'+ str(SEED) +'QQ_inSampConZhat_IndivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.png')   
-	plt.show()
-	plt.close()
-	# QQ plot for insample predicitons for Ztilde
-	Lqunatile = np.quantile(samples_yTilde, 0.025, axis=0)
-	Uqunatile = np.quantile(samples_yTilde, 0.975, axis=0)
-	num_Outputs = samples_yTilde.shape[1]
-
-	std_norm_quantile = np.array([stats.norm.ppf((i-0.5)/num_Outputs) for i in range(1, num_Outputs+1)])
-
-	plt.figure
-	sm.qqplot(std_yEst_yTilde, line='45')
-	plt.savefig(output_folder + 'SEED'+ str(SEED) + 'QQ_inSampZtildeConZhat_indivErr' + str(indivError) + 'idx' + str(index_Xaxis) + 'NoCI.png')
-	plt.show()
-	plt.close()
-
-	plt.figure()
-	# sm.qqplot(standardised_y_estimate, line='45')
-	plt.scatter(std_norm_quantile, np.sort(std_yEst_yTilde),  marker = '.', color ='b', label='Truth')
-	plt.scatter(std_norm_quantile, Uqunatile, color = 'k', marker = '_', label='Upper_CI') 
-	plt.scatter(std_norm_quantile, Lqunatile, color = 'green', marker = '_', label='Lower_CI')  
-	plt.plot(std_norm_quantile, std_norm_quantile, color='r')
-	plt.xlabel('Theoretical Quantiles')
-	plt.ylabel('Sample Quantiles')
-	plt.legend(loc='best')
-	plt.savefig(output_folder + 'SEED'+ str(SEED) + 'QQ_inSampZtildeConZhat_indivErr' + str(indivError) + 'idx' + str(index_Xaxis) + '.png')
-	plt.show()
-	plt.close()    
 
 if __name__ == '__main__':
 	computeN3Cost.init(0)
@@ -1573,13 +1444,12 @@ if __name__ == '__main__':
 	p.add_argument('-poly_deg', type=int, dest='poly_deg', default=2, help='degree of the polynomial function of the additive model bias')
 	p.add_argument('-indivError', dest='indivError', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether to individual std errors for GP diagnosis')
 	p.add_argument('-index_Xaxis', dest='index_Xaxis', default=True,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether X-axis is index for GP diagnosis')
-	p.add_argument('-parUncerty', dest='parUncerty', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether taking into account parameter uncertainty for a fixed seed for GP diagnosis')
-	p.add_argument('-parUncertyOverSeeds', dest='parUncertyOverSeeds', default=True,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether taking into account parameter uncertainty over seeds for GP diagnosis')
+	p.add_argument('-parUncerty', dest='parUncerty', default=True,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether taking into account parameter uncertainty for a fixed seed for GP diagnosis')
+	p.add_argument('-parUncertyOverSeeds', dest='parUncertyOverSeeds', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether taking into account parameter uncertainty over seeds for GP diagnosis')
 	p.add_argument('-idx_theta', dest='idx_theta', type=int, default=0, help='index for the 1000 thetas for a fixed seed')
+	p.add_argument('-parUncertyCI', dest='parUncertyCI', default=True,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether taking into account parameter uncertainty for a fixed seed for GP credible interval diagnosis')
 
 	args = p.parse_args() 
-	# plot_qq_parUncerty(args.parUncertyOverSeeds, args.numMo, args.SEED)
-	# exit(-1)
 	
 	if args.useSimData: 
 		# input_folder = os.getcwd() + '/dataRsimGammaTransformErrorInZtilde/numObs_200_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
@@ -1692,18 +1562,26 @@ if __name__ == '__main__':
 		
 		theta_tmp = mu + np.dot(lower_chol, np.random.normal(0., 1., num_theta))
 		print('theta ' + str(args.idx_theta) + ' is ' + str(theta_tmp))
-		samples_Zs, samples_yHat, samples_yTilde = \
-		gpValid_parUncerty.predic_gpRegression(args.idx_theta, theta_tmp, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo, \
-	args.useSimData, args.grid, args.predicMo, args.poly_deg, args.indivError, args.index_Xaxis)
 
 		output_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/idx_theta' + str(args.idx_theta)
 		if not os.path.exists(output_folder):
 			os.makedirs(output_folder)
 		output_folder += '/'
 		print('output_folder for parUncerty ' + str(output_folder))
-		tmp = [samples_Zs, samples_yHat, samples_yTilde]
-		all_samples_out = open(output_folder + 'all_samples_parUncerty.pkl', 'wb')
-		pickle.dump(tmp, all_samples_out)
+
+		if args.parUncertyCI:
+			succRate = gpValid_parUncerty_CI.predic_gpRegression(args.idx_theta, theta_tmp, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo, \
+		args.useSimData, args.grid, args.predicMo, args.poly_deg, args.indivError, args.index_Xaxis)        
+			accuracy_out = open(output_folder + 'predicAccuracy_outSample.pkl', 'wb')
+			pickle.dump(succRate, accuracy_out) 
+			accuracy_out.close()		
+		else:
+			samples_Zs, samples_yHat, samples_yTilde = \
+			gpValid_parUncerty.predic_gpRegression(args.idx_theta, theta_tmp, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo, \
+		args.useSimData, args.grid, args.predicMo, args.poly_deg, args.indivError, args.index_Xaxis)        
+			tmp = [samples_Zs, samples_yHat, samples_yTilde]
+			all_samples_out = open(output_folder + 'all_samples_parUncerty.pkl', 'wb')
+			pickle.dump(tmp, all_samples_out)
 	else:
 		predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo, \
 			args.useSimData, args.grid, args.predicMo, args.poly_deg, args.indivError, args.index_Xaxis)

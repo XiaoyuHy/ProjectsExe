@@ -1,3 +1,11 @@
+14/03/2019:
+Out-of-sample credible interval:
+From 1000 thetas:
+ Mean,std_succRate, Lqunatile, median_succRate, Uqunatile of credible interval for SEED 120 numMo 500 is
+  (0.9074285714285715, 0.021769197485981724, 0.8928571428571429, 0.8928571428571429, 0.9642857142857143)
+From 1000 samples:
+mean_succRate, std_succRate, Lqunatile_succRate, median_succRate, Uqunatile_succRate is (0.9549640000000001, 0.03956815264831048, 0.857, 0.964, 1.0)
+
 09/03/2019: for numMo 500 
 Found that the QQ plot for over 88 seeds , 1000 thetas, 1000 predictions for fixed theta(MLE) are similar, because their Lquantile and Uquantile are similar, see below.
 Over seeds - Lquantile:
