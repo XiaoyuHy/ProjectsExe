@@ -1,6 +1,6 @@
 14/03/2019:
 Out-of-sample credible interval:
-From 1000 thetas:
+From 1000 thetas: -- This result should NOT be used, as for each theta, there is still correlation between the outputs.
  Mean,std_succRate, Lqunatile, median_succRate, Uqunatile of credible interval for SEED 120 numMo 500 is
   (0.9074285714285715, 0.021769197485981724, 0.8928571428571429, 0.8928571428571429, 0.9642857142857143)
 From 1000 samples:
