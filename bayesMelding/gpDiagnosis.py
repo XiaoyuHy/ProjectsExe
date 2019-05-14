@@ -402,7 +402,7 @@ def plot_predictedMo(X_train, y_train_withMean, X_test, y_test, mu_star, numMo, 
 	as_numeric = r['as.numeric']
 	col_pts = pal.rx(as_numeric(r.cut(y_train_withMean, plot_seq)))
 	r.points(X_train[:, 0], X_train[:, 1], bg=col_pts, pch=21)
-	r.legend('topright', legend=r.c("observations"), pch =21)
+	r.legend('topright', legend=r.c("Observations"), pch =21)
    
 	# Plot the the interpolated predicted values of model outputs
 	r.png(output_folder +'SEED'+ str(SEED) + 'TrainObsAndAllPredicMo' + str(numMo) + '.png')
