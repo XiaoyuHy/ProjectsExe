@@ -322,6 +322,147 @@ def log_py_giv_par(theta, X, y, OMEGA = 1e-6):
 
 	return log_like
 
+def plot_predictedMo(X_train, y_train_withMean, X_test, y_test, mu_star, numMo, output_folder, SEED):
+	max_all = np.array([y_test.max(), y_train_withMean.max(),  mu_star.max()]).max()
+	print('max_all with prediction is ' + str(max_all))
+	min_all = np.array([y_test.min(),y_train_withMean.min(), mu_star.min()]).min()
+	print('min_all with prediction is ' + str(min_all))
+	# X_mo = np.array(list(chain.from_iterable(X_tildZs)))
+
+	# plt.figure()
+	# plt.scatter(X_mo[:, 0], X_mo[:, 1], c= y_test, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, marker = '^', s = 300, label = "Mo")
+	# plt.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, label = "Obs", edgecolors ='black')
+	# plt.colorbar()
+	# plt.legend(loc='best')
+	# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'TrainObsAndAllTrainMo' + str(numMo) + '.png')
+	# plt.show()
+	# plt.close()
+
+	# plt.figure()
+	# plt.scatter(X_mo[:, 0], X_mo[:, 1], c= mu_star, cmap=plt.cm.jet, vmin=min_all, vmax=max_all,  marker = '^', s = 300, label = "Mo")
+	# plt.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, label = "Obs", edgecolors = 'black')
+	# plt.colorbar()
+	# plt.legend(loc='best')
+	# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'TrainObsAndAllPredicMo' + str(numMo) + '.png')
+	# plt.show()
+	# plt.close()
+
+	# im = plt.imshow(np.flipud(mu_star.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap =plt.matplotlib.cm.jet)
+	# plt.scatter(X_hatZs[:,0], X_hatZs[:,1], s=12, c='k', marker = 'o')
+	ama = importr('akima')
+	flds = importr('fields')
+	sp = importr('sp')
+	numpy2ri.activate() 
+	# Plot the the interpolated climate model outputs
+	r.png(output_folder +'SEED'+ str(SEED) + 'TrainObsAndAllTrainMo' + str(numMo) + '.png')
+	x_plot =  np.linspace(-11.7, -3.21, numMo)
+	y_plot = np.linspace(-6.2, 3.0, numMo)
+	interpolated = ama.interp(X_test[:, 0], X_test[:, 1], y_test, xo=x_plot, yo=y_plot)
+
+	as_vector = r['as.vector']
+
+	z = np.array(as_vector(interpolated.rx2('z')))
+
+	d = {'a':interpolated.rx2('x'), 'b':interpolated.rx2('y')}
+	dataf = ro.DataFrame(d)
+
+	as_matrix = r['as.matrix']
+	expand_grid = r['expand.grid']
+
+	xy = as_matrix(expand_grid(dataf))
+   
+	r.load('france_rcoords.RData')
+	france_rcoords = r['france_rcoords']
+
+	as_logical = r['as.logical']
+  
+	is_france = as_logical(sp.point_in_polygon(xy.rx(True,1), xy.rx(True,2), \
+		france_rcoords[:,0], france_rcoords[:,1]))
+
+	is_france = np.array(is_france).astype(bool)
+
+	z[~is_france] = np.nan
+	numpy2ri.activate() 
+	z1= r.matrix(z, numMo, numMo)
+  
+
+	d1 = {'x':interpolated.rx2('x'), 'y':interpolated.rx2('y'), 'z':z1}
+	d2 = ro.ListVector(d1)
+   
+	minimum = np.array([y_test.min(), y_train_withMean.min(), mu_star.min()]).min()
+	print('minimum is ' + str(minimum))
+	maximum = np.array([y_test.max(), y_train_withMean.max(), mu_star.max()]).max()
+	print('maximum is ' + str(maximum))
+
+	plot_seq = r.pretty(np.arange(6,42), 20)
+	jet_colors = r.colorRampPalette(r.c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+	pal = jet_colors(len(plot_seq) - 1)
+	flds.image_plot(d2, breaks=plot_seq, col=pal, xlab="Longitude", ylab="Latitude", main='')
+   
+	as_numeric = r['as.numeric']
+	col_pts = pal.rx(as_numeric(r.cut(y_train_withMean, plot_seq)))
+	r.points(X_train[:, 0], X_train[:, 1], bg=col_pts, pch=21)
+	r.legend('topright', legend=r.c("observations"), pch =21)
+   
+	# Plot the the interpolated predicted values of model outputs
+	r.png(output_folder +'SEED'+ str(SEED) + 'TrainObsAndAllPredicMo' + str(numMo) + '.png')
+	x_plot =  np.linspace(-11.7, -3.21, numMo)
+	y_plot = np.linspace(-6.2, 3.0, numMo)
+	interpolated = ama.interp(X_test[:, 0], X_test[:, 1], mu_star, xo=x_plot, yo=y_plot)
+	# print(interpolated.rx2('x'))
+
+	z = np.array(as_vector(interpolated.rx2('z')))
+
+	d = {'a':interpolated.rx2('x'), 'b':interpolated.rx2('y')}
+	dataf = ro.DataFrame(d)
+	xy = as_matrix(expand_grid(dataf))
+	print(r.dim(xy))
+  
+	is_france = as_logical(sp.point_in_polygon(xy.rx(True,1), xy.rx(True,2), \
+		france_rcoords[:,0], france_rcoords[:,1]))
+
+	is_france = np.array(is_france).astype(bool)
+
+	z[~is_france] = np.nan
+	numpy2ri.activate() 
+	z1= r.matrix(z, numMo, numMo)
+	print(r.dim(interpolated.rx2('z')))
+
+	d1 = {'x':interpolated.rx2('x'), 'y':interpolated.rx2('y'), 'z':z1}
+	d2 = ro.ListVector(d1)
+	
+
+	jet_colors = r.colorRampPalette(r.c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+	pal = jet_colors(len(plot_seq) - 1)
+	flds.image_plot(d2, breaks=plot_seq, col=pal, xlab="Longitude", ylab="Latitude", main='Observations & predicted model outputs')
+   
+	col_pts = pal.rx(as_numeric(r.cut(y_train_withMean, plot_seq)))
+	r.points(X_train[:, 0], X_train[:, 1], bg=col_pts, pch=21)
+	r.legend('topright', legend=r.c("observations"), pch =21)
+
+	numpy2ri.deactivate()
+	exit(-1)
+
+	# plt.figure()
+	# plt.scatter(X_test[:, 0], X_test[:, 1], c= y_test, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, marker ='s', s=2)
+	# plt.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, label = "Obs", edgecolors ='black')
+	# plt.colorbar()
+	# plt.legend(loc='best')
+	# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'TrainObsAndAllTrainMo' + str(numMo) + '.png')
+	# plt.show()
+	# plt.close()
+
+	# plt.figure()
+	# plt.scatter(X_test[:, 0], X_test[:, 1], c= mu_star, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, marker ='s', s=2)
+	# plt.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, label = "Obs", edgecolors = 'black')
+	# plt.colorbar()
+	# plt.legend(loc='best')
+	# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'TrainObsAndAllPredicMo' + str(numMo) + '.png')
+	# plt.show()
+	# plt.close()
+	# exit(-1)
+
+
 def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, crossValFlag = False,  SEED=None, numMo = None, useSimData =False, grid= False, \
 	predicMo = False, a_bias_poly_deg = 5, indivError = True, index_Xaxis =True, conditionZhat = True,  marginZtilde=False, conZhatZtilde= False, marginZhat=False, \
 	gp_deltas_modelOut = True, withPrior= False, rbf = True, OMEGA = 1e-6):
@@ -408,7 +549,8 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 			output_folder = os.getcwd() + '/dataSimulated/numObs_200_numMo_' + str(numMo) + '/seed' + str(SEED) 
 	else:
 		if predicMo:
-			output_folder = 'Data/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED) + '/predicMo'
+			# output_folder = 'Data/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED) + '/predicMo'
+			output_folder = 'DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED) + '/predicMo'
 		else:
 			output_folder = 'DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED) 
 			# output_folder = 'Data/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED) 
@@ -434,6 +576,22 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 		meanPredic_out = open(output_folder + 'meanPredic_outSample.pkl', 'wb')
 		pickle.dump(mu_star, meanPredic_out) 
 		meanPredic_out.close()
+
+		input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128/seed' + str(SEED) + '/'
+		mean_y_hatZs_in = open(input_folder + 'mean.pickle', 'rb')
+		mean_y_hatZs = pickle.load(mean_y_hatZs_in) 
+
+		y_test = y_test + mean_y_hatZs
+		y_train_withMean = y_train + mean_y_hatZs
+		y_tildZs_withMean = y_tildZs + mean_y_hatZs
+		mu_star = mu_star + mean_y_hatZs
+
+		# print('maximum of y_test is ' + str(y_test.max()))
+		# print('maximum of y_tildZs is ' + str(y_tildZs.max()))
+		# print('minimum of y_test is ' + str(y_test.min()))
+		# print('minimum of y_tildZs is ' + str(y_tildZs.min()))
+
+		plot_predictedMo(X_train, y_train_withMean, X_test, y_test, mu_star, numMo, output_folder, SEED)
 
 	# print 'estimated mean is ' + str(mu_star)
 	# print 'y_test is ' + str(y_test)
@@ -627,146 +785,8 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 		print('min_all is ' + str(min_all))
 
 		if predicMo:
+			plot_predictedMo(X_train, y_train_withMean, X_test, y_test, mu_star)
 
-			max_all = np.array([y_test.max(), y_train_withMean.max(),  mu_star.max()]).max()
-			print('max_all with prediction is ' + str(max_all))
-			min_all = np.array([y_test.min(),y_train_withMean.min(), mu_star.min()]).min()
-			print('min_all with prediction is ' + str(min_all))
-			# X_mo = np.array(list(chain.from_iterable(X_tildZs)))
-
-			# plt.figure()
-			# plt.scatter(X_mo[:, 0], X_mo[:, 1], c= y_test, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, marker = '^', s = 300, label = "Mo")
-			# plt.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, label = "Obs", edgecolors ='black')
-			# plt.colorbar()
-			# plt.legend(loc='best')
-			# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'TrainObsAndAllTrainMo' + str(numMo) + '.png')
-			# plt.show()
-			# plt.close()
-
-			# plt.figure()
-			# plt.scatter(X_mo[:, 0], X_mo[:, 1], c= mu_star, cmap=plt.cm.jet, vmin=min_all, vmax=max_all,  marker = '^', s = 300, label = "Mo")
-			# plt.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, label = "Obs", edgecolors = 'black')
-			# plt.colorbar()
-			# plt.legend(loc='best')
-			# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'TrainObsAndAllPredicMo' + str(numMo) + '.png')
-			# plt.show()
-			# plt.close()
-
-			# im = plt.imshow(np.flipud(mu_star.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap =plt.matplotlib.cm.jet)
-			# plt.scatter(X_hatZs[:,0], X_hatZs[:,1], s=12, c='k', marker = 'o')
-			ama = importr('akima')
-			flds = importr('fields')
-			sp = importr('sp')
-			numpy2ri.activate() 
-			# Plot the the interpolated climate model outputs
-			r.png(output_folder +'SEED'+ str(SEED) + 'TrainObsAndAllTrainMo' + str(numMo) + '.png')
-			x_plot =  np.linspace(-11.7, -3.21, 500)
-			y_plot = np.linspace(-6.2, 3.0, 500)
-			interpolated = ama.interp(X_test[:, 0], X_test[:, 1], y_test, xo=x_plot, yo=y_plot)
-
-			as_vector = r['as.vector']
-
-			z = np.array(as_vector(interpolated.rx2('z')))
-
-			d = {'a':interpolated.rx2('x'), 'b':interpolated.rx2('y')}
-			dataf = ro.DataFrame(d)
-
-			as_matrix = r['as.matrix']
-			expand_grid = r['expand.grid']
-
-			xy = as_matrix(expand_grid(dataf))
-		   
-			r.load('france_rcoords.RData')
-			france_rcoords = r['france_rcoords']
-	  
-			as_logical = r['as.logical']
-		  
-			is_france = as_logical(sp.point_in_polygon(xy.rx(True,1), xy.rx(True,2), \
-				france_rcoords[:,0], france_rcoords[:,1]))
-
-			is_france = np.array(is_france).astype(bool)
-
-			z[~is_france] = np.nan
-			numpy2ri.activate() 
-			z1= r.matrix(z, 500, 500)
-		  
-
-			d1 = {'x':interpolated.rx2('x'), 'y':interpolated.rx2('y'), 'z':z1}
-			d2 = ro.ListVector(d1)
-		   
-			minimum = np.array([y_test.min(), y_train_withMean.min(), mu_star.min()]).min()
-			print('minimum is ' + str(minimum))
-			maximum = np.array([y_test.max(), y_train_withMean.max(), mu_star.max()]).max()
-			print('maximum is ' + str(maximum))
-
-			plot_seq = r.pretty(np.arange(6,42), 20)
-			jet_colors = r.colorRampPalette(r.c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
-			pal = jet_colors(len(plot_seq) - 1)
-			flds.image_plot(d2, breaks=plot_seq, col=pal, xlab="Longitude", ylab="Latitude", main='Observations & training model outputs')
-		   
-			as_numeric = r['as.numeric']
-			col_pts = pal.rx(as_numeric(r.cut(y_train_withMean, plot_seq)))
-			r.points(X_train[:, 0], X_train[:, 1], bg=col_pts, pch=21)
-			r.legend('topright', legend=r.c("observations"), pch =21)
-		   
-			# Plot the the interpolated predicted values of model outputs
-			r.png(output_folder +'SEED'+ str(SEED) + 'TrainObsAndAllPredicMo' + str(numMo) + '.png')
-			x_plot =  np.linspace(-11.7, -3.21, 500)
-			y_plot = np.linspace(-6.2, 3.0, 500)
-			interpolated = ama.interp(X_test[:, 0], X_test[:, 1], mu_star, xo=x_plot, yo=y_plot)
-			# print(interpolated.rx2('x'))
-
-			z = np.array(as_vector(interpolated.rx2('z')))
-
-			d = {'a':interpolated.rx2('x'), 'b':interpolated.rx2('y')}
-			dataf = ro.DataFrame(d)
-			xy = as_matrix(expand_grid(dataf))
-			print(r.dim(xy))
-		  
-			is_france = as_logical(sp.point_in_polygon(xy.rx(True,1), xy.rx(True,2), \
-				france_rcoords[:,0], france_rcoords[:,1]))
-
-			is_france = np.array(is_france).astype(bool)
-
-			z[~is_france] = np.nan
-			numpy2ri.activate() 
-			z1= r.matrix(z, 500, 500)
-			print(r.dim(interpolated.rx2('z')))
-
-			d1 = {'x':interpolated.rx2('x'), 'y':interpolated.rx2('y'), 'z':z1}
-			d2 = ro.ListVector(d1)
-			
-
-			jet_colors = r.colorRampPalette(r.c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
-			pal = jet_colors(len(plot_seq) - 1)
-			flds.image_plot(d2, breaks=plot_seq, col=pal, xlab="Longitude", ylab="Latitude", main='Observations & predicted model outputs')
-		   
-			col_pts = pal.rx(as_numeric(r.cut(y_train_withMean, plot_seq)))
-			r.points(X_train[:, 0], X_train[:, 1], bg=col_pts, pch=21)
-			r.legend('topright', legend=r.c("observations"), pch =21)
-
-			numpy2ri.deactivate()
-			exit(-1)
-
-			# plt.figure()
-			# plt.scatter(X_test[:, 0], X_test[:, 1], c= y_test, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, marker ='s', s=2)
-			# plt.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, label = "Obs", edgecolors ='black')
-			# plt.colorbar()
-			# plt.legend(loc='best')
-			# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'TrainObsAndAllTrainMo' + str(numMo) + '.png')
-			# plt.show()
-			# plt.close()
-
-			# plt.figure()
-			# plt.scatter(X_test[:, 0], X_test[:, 1], c= mu_star, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, marker ='s', s=2)
-			# plt.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, label = "Obs", edgecolors = 'black')
-			# plt.colorbar()
-			# plt.legend(loc='best')
-			# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'TrainObsAndAllPredicMo' + str(numMo) + '.png')
-			# plt.show()
-			# plt.close()
-			# exit(-1)
-		# exit(-1)
 		# X_mo = np.array(list(chain.from_iterable(X_tildZs)))
 		# plt.figure()
 		# plt.scatter(X_mo[:, 0], X_mo[:, 1],  c = y_tildZs, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, marker ='s', s=2)
@@ -1523,8 +1543,8 @@ if __name__ == '__main__':
 			# X_test = np.array(list(chain.from_iterable(X_tildZs)))
 			# y_test = y_tildZs
 
-			# input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
-			input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
+			input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
+			# input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
 			all_X_Zs_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
 			all_X_Zs = pickle.load(all_X_Zs_in) 
 
