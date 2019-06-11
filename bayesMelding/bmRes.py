@@ -250,7 +250,7 @@ def plot(useSimData):
 	output_folder = 'dataSimulated/'
 	plt.figure()
 	# plt.plot(numMo, median_rmse, 'c-', label= 'BM median')
-	plt.plot(numMo, avg_rmse_bm_outSample, 'g-', label= 'DA mean')
+	plt.plot(numMo, avg_rmse_bm_outSample, 'g-', label= 'DF mean')
 	# plt.plot(numMo, upperquantile_rmse, 'b-', label= 'BM 0.75 quantile')
 	# plt.plot(numMo, lowerquantile_rmse, 'r-', label= 'BM 0.25 quantile')
 	# plt.axhline(median_rmse_krig, color = 'k', linestyle = '--', label='Kriging median')
@@ -267,7 +267,7 @@ def plot(useSimData):
 
 	plt.figure()
 	# plt.plot(numMo, median_var, 'c-', label= 'BM median')
-	plt.plot(numMo, avg_avgVar_bm_outSample, 'g-', label= 'DA mean')
+	plt.plot(numMo, avg_avgVar_bm_outSample, 'g-', label= 'DF mean')
 	# plt.plot(numMo, upperquantile_var, 'b-', label= 'BM 0.75 quantile')
 	# plt.plot(numMo, lowerquantile_var, 'r-', label= 'BM 0.25 quantile')
 	# plt.axhline(median_var_krig, color = 'k', linestyle = '--', label='Kriging median')
@@ -284,7 +284,7 @@ def plot(useSimData):
 
 	plt.figure()
 	# plt.plot(numMo, median_cov, 'c-', label= 'BM median')
-	plt.plot(numMo, avg_predicAccuracy_bm_outSample * 100, 'g-', label= 'DA mean')
+	plt.plot(numMo, avg_predicAccuracy_bm_outSample * 100, 'g-', label= 'DF mean')
 	# plt.plot(numMo, upperquantile_cov, 'b-', label= 'BM 0.75 quantile')
 	# plt.plot(numMo, lowerquantile_cov, 'r-', label= 'BM 0.25 quantile')
 	# plt.axhline(median_cov_krig, color = 'k', linestyle = '--', label='Kriging median')
