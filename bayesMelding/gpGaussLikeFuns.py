@@ -446,6 +446,15 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     vstar = vstar.reshape(ntest, )
     # print('Out of sample estimated variance is ' + str(vstar))
 
+    mean_out = open(output_folder + 'mean_Predic.pkl', 'wb')
+    pickle.dump(mu_star, mean_out) 
+    mean_out.close()
+
+    var_out = open(output_folder + 'var_Predic.pkl', 'wb')
+    pickle.dump(vstar, var_out) 
+    var_out.close()
+
+
     if useSimData:
         if grid:
             avg_width_of_predic_var = np.sqrt(vstar)
