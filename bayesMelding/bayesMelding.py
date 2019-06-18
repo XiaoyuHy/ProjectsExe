@@ -1263,7 +1263,7 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
     else:
         num_par=X_hatZs.shape[1]  
     res = []
-    if numMo == 250:
+    if numMo == 50:
         rounds =3
         for round in range(rounds):
             res_tmp = optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat,seed, numMo, round)
@@ -1357,8 +1357,8 @@ if __name__ == '__main__':
     # check_grads()
     # exit(-1)
     p = argparse.ArgumentParser()
-    p.add_argument('-SEED', type=int, dest='SEED', default=200, help='The simulation index')
-    p.add_argument('-repeat', type=int, dest='repeat', default=1, help='number of repeats in optimisation')
+    p.add_argument('-SEED', type=int, dest='SEED', default=204, help='The simulation index')
+    p.add_argument('-repeat', type=int, dest='repeat', default=2, help='number of repeats in optimisation')
     p.add_argument('-o', type=str, dest='output', default=None, help='Output folder')
     p.add_argument('-withPrior', dest='withPrior', default=False,  type=lambda x: (str(x).lower() == 'true'), help='flag for ML or MAP')
     p.add_argument('-fixMb', dest='fixMb', default=False,  type=lambda x: (str(x).lower() == 'true'), \
