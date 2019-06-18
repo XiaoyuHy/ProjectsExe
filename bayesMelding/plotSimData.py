@@ -16,13 +16,34 @@ import random
 from rpy2.robjects import r
 # from mpl_toolkits.mplot3d import Axes3D
 
+def plot_predic_Zs_sim(point_res =1000, SEED = 204, numMo = 50):
+
+	input_folder = 'dataSimulated/numObs_200_numMo_' + str(numMo) + '/seed204/' 
+	mean_predic_in= open(input_folder + 'mean_Predic.pkl', 'rb')
+	mean_predic = pickle.load(mean_predic_in)
+	print(mean_predic.shape)
+	lower_bound = np.array([-12., -6.5])
+	upper_bound = np.array([-3., 3.])
+	plt.figure()
+	im = plt.imshow(np.flipud(mean_predic.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap = plt.matplotlib.cm.jet)
+	# plt.scatter(X_hatZs[:,0], X_hatZs[:,1], s=12, c='k', marker = 'o')
+	cb=plt.colorbar(im)
+	cb.set_label('${predicted Z(s)}$')
+	# plt.title('min = %.2f , max = %.2f , avg = %.2f' % (all_y_Zs.min(), all_y_Zs.max(), all_y_Zs.mean()))
+	plt.xlabel('$Longitude$')
+	plt.ylabel('$Latitude$')
+	# plt.grid()
+	plt.savefig('d2_predicZs_res' + str(point_res)  + 'SEED' + str(SEED)  + '.png')
+	plt.show()
+	plt.close()
+
 def fun_a_bias(x, a_bias_coefficients = [2., 3., 15.]):
 	a_bias_coefficients = np.array(a_bias_coefficients)
 	a_bias = np.dot(a_bias_coefficients, np.concatenate((x, [1.])))
 	return a_bias
 
-def sim_hatTildZs_With_Plots(SEED = 200, phi_Zs = [0.8], gp_deltas_modelOut = True, phi_deltas_of_modelOut = [0.2], \
-	sigma_Zs = 1.0, sigma_deltas_of_modelOut = 0.5, obs_noi_scale = 0.5, b= 0.6, areal_res = 25,  resCoordsPerAreal =10, point_res=1000, num_hatZs=200, num_tildZs = 150, \
+def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = True, phi_deltas_of_modelOut = [0.2], \
+	sigma_Zs = 1.0, sigma_deltas_of_modelOut = 0.5, num_tildZs = 150, obs_noi_scale = 0.5, b= 0.6, areal_res = 25,  resCoordsPerAreal =10, point_res=1000, num_hatZs=200,  \
 	 a_bias_poly_deg = 2):
 	np.random.seed(SEED)
 	random.seed(SEED)
@@ -135,13 +156,35 @@ def sim_hatTildZs_With_Plots(SEED = 200, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	# plt.title('min = %.2f , max = %.2f , avg = %.2f' % (all_y_Zs.min(), all_y_Zs.max(), all_y_Zs.mean()))
 	plt.xlabel('$Longitude$')
 	plt.ylabel('$Latitude$')
-	plt.grid()
+	# plt.grid()
 	plt.savefig('d2_Zs_res' + str(point_res)  + 'SEED' + str(SEED)  + '.png')
 	plt.show()
 	plt.close()
 
 
 	mean_Zs = np.mean(all_y_Zs)
+
+
+	input_folder = 'dataSimulated/numObs_200_numMo_' + str(num_tildZs) + '/seed204/' 
+	mean_predic_in= open(input_folder + 'mean_Predic.pkl', 'rb')
+	mean_predic = pickle.load(mean_predic_in)
+	mean_predic = mean_predic + mean_Zs
+	lower_bound = np.array([-12., -6.5])
+	upper_bound = np.array([-3., 3.])
+
+	plt.figure()
+	im = plt.imshow(np.flipud(mean_predic.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap = plt.matplotlib.cm.jet)
+	# plt.scatter(X_hatZs[:,0], X_hatZs[:,1], s=12, c='k', marker = 'o')
+	cb=plt.colorbar(im)
+	cb.set_label('${predicted \ Z(s)}$')
+	# plt.title('min = %.2f , max = %.2f , avg = %.2f' % (all_y_Zs.min(), all_y_Zs.max(), all_y_Zs.mean()))
+	plt.xlabel('$Longitude$')
+	plt.ylabel('$Latitude$')
+	# plt.grid()
+	plt.savefig('d2_predicZs_res' + str(point_res)  + 'SEED' + str(SEED)  + 'numMo_' + str(num_tildZs) +  '.png')
+	plt.show()
+	plt.close()
+	
 	all_y_Zs = all_y_Zs - mean_Zs
 	
 
@@ -212,41 +255,42 @@ def sim_hatTildZs_With_Plots(SEED = 200, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	x1, x2 = np.meshgrid(np.linspace(lower_bound[0], upper_bound[0], areal_res),
 						 np.linspace(lower_bound[1], upper_bound[1], areal_res))
 
-	all_y_tildZs = all_y_tildZs + mean_Zs
+	all_y_tildZs_withMean = all_y_tildZs + mean_Zs
 
 
-	plt.figure()
-	im = plt.imshow(np.flipud(all_y_tildZs.reshape((areal_res, areal_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap = plt.matplotlib.cm.jet)
-	cb=plt.colorbar(im)
-	cb.set_label('${X(A_i)}$')
-	# plt.title('min = %.2f , max = %.2f , avg = %.2f' % (all_y_tildZs.min(), all_y_tildZs.max(), all_y_tildZs.mean()))
-	plt.xlabel('$Longitude$')
-	plt.ylabel('$Latitude$')
-	# plt.grid()
-	plt.savefig('d2_tildZs_res' + str(areal_res)  + 'SEED' + str(SEED) + '.png')
-	plt.show()
-	plt.close()
-	exit(-1)
-
+	# plt.figure()
+	# im = plt.imshow(np.flipud(all_y_tildZs_withMean.reshape((areal_res, areal_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap = plt.matplotlib.cm.jet)
+	# cb=plt.colorbar(im)
+	# cb.set_label('${X(A_i)}$')
+	# # plt.title('min = %.2f , max = %.2f , avg = %.2f' % (all_y_tildZs.min(), all_y_tildZs.max(), all_y_tildZs.mean()))
+	# plt.xlabel('$Longitude$')
+	# plt.ylabel('$Latitude$')
+	# # plt.grid()
+	# plt.savefig('d2_tildZs_res' + str(areal_res)  + 'SEED' + str(SEED) + '.png')
+	# plt.show()
+	# plt.close()
 
 	# idx = np.random.randint(0, len(all_y_Zs), num_hatZs)
 	idx = random.sample(list(np.arange(len(all_y_Zs))), num_hatZs) # 07/08/2018 This randomly geneated integers are unique
 	X_hatZs = all_X_Zs[idx, :] 
-	y_hatZs = all_y_Zs[idx]
+	y_hatZs_tmp = all_y_Zs[idx]
 	#add normal noise with scale = obs_noi_scale
-	y_hatZs = y_hatZs + np.random.normal(loc=0., scale = obs_noi_scale, size = num_hatZs)
+	y_hatZs = y_hatZs_tmp + np.random.normal(loc=0., scale = obs_noi_scale, size = num_hatZs)
 
 
 
-	numMO = np.array([50, 100, 150, 200, 250, 300, 350, 400, 450, 500])
+	# numMO = np.array([50, 100, 150, 200, 250, 300, 350, 400, 450, 500])
 	
-	# numMO = np.array([50])
+	numMO = np.array([50,100])
+	# numMO = np.array([50,100, 150, 200, 250, 300])
 	moIncreNum=50
 
 	modelOutputX = []
 	modelOutputy = []
 	X_tildZs = []
 	y_tildZs = []
+	areal_Zs_toTild =[]
+	areal_Zsoutput = []
 
 	for idxNumMo in range(len(numMO)):
 		num_Mo = len(all_y_tildZs)
@@ -262,8 +306,12 @@ def sim_hatTildZs_With_Plots(SEED = 200, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 		print('shape of X_tildZs is ' + str(X_tildZs.shape))
 		y_tildZs = np.array(list(all_y_tildZs[mask]) + modelOutputy) 
 		y_tildZs = y_tildZs + np.random.normal(loc=0., scale = 0.5, size = len(y_tildZs))
-
 		print('shape of y_tildZs is ' + str(y_tildZs.shape))
+
+		areal_Zs_toTild_tmp = areal_Zs[mask]
+		areal_Zs_toTild = np.array(list(areal_Zs_toTild_tmp) + areal_Zsoutput)
+		areal_Zs = areal_Zs[~mask]
+		areal_Zsoutput = list(areal_Zs_toTild)
 
 		all_X_tildZs = all_X_tildZs[~mask]
 		all_y_tildZs = all_y_tildZs[~mask]
@@ -291,12 +339,6 @@ def sim_hatTildZs_With_Plots(SEED = 200, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 		# # plt.show()
 		# plt.close()
 
-		areal_hatZs = []
-		for i in range(len(y_tildZs)):
-			idx_min_dist = np.argmin(np.array([np.linalg.norm(X_tildZs[i] - X_hatZs[j]) for j in range(len(y_hatZs))]))
-			areal_hatZs.append(y_hatZs[idx_min_dist])
-		areal_hatZs = np.array(areal_hatZs)
-
 		#save the samples of tildZs
 		X_hatZs_out = open(output_folder + 'X_hatZs.pkl', 'wb')
 		pickle.dump(X_hatZs, X_hatZs_out)
@@ -314,17 +356,24 @@ def sim_hatTildZs_With_Plots(SEED = 200, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 		pickle.dump(y_tildZs, y_tildZs_out)
 		y_tildZs_out.close()
 
-		areal_hatZs_out = open(output_folder + 'areal_hatZs.pkl', 'wb')
-		pickle.dump(areal_hatZs, areal_hatZs_out)
-		areal_hatZs_out.close()
-	
+	print(areal_Zs_toTild.shape)
 
+	areal_Zs_tmp0 = np.array([areal_Zs_toTild[i][0, 0] for i in range(len(areal_Zs_toTild))])
+
+	plt.figure()
+	plt.scatter(y_hatZs_tmp + mean_Zs, y_hatZs + mean_Zs, color = 'k', label= 'Z(s) versus Y(s)')
+	plt.scatter(areal_Zs_tmp0 + mean_Zs, y_tildZs + mean_Zs, marker = '^', color ='b', label = "Z(s) versus $X(A_i)$")
+	plt.legend(loc='best')
+	plt.savefig('Zs_Ys_XAi_SEED' + str(SEED) + '_numMo' + str(numMO[-1]) + '.png')
+	plt.show()
+	plt.close()
+	exit(-1)
 
 
 
 if __name__ == '__main__':
 	p = argparse.ArgumentParser()
-	p.add_argument('-SEED', type=int, dest='SEED', default=200, help='The simulation index')
+	p.add_argument('-SEED', type=int, dest='SEED', default=204, help='The simulation index')
 	p.add_argument('-o', type=str, dest='output', default=None, help='Output folder')
 	p.add_argument('-lsZs', type=float, dest='lsZs', default=0.8, help='lengthscale of the GP covariance for Zs')
 	p.add_argument('-lsdtsMo', type=float, dest='lsdtsMo', default=0.2, help='lengthscale of the GP covariance for deltas of model output')
@@ -341,8 +390,9 @@ if __name__ == '__main__':
 	#     os.makedirs(output_folder)
 	# output_folder += '/'
 	sim_hatTildZs_With_Plots(SEED =args.SEED, phi_Zs = [args.lsZs], gp_deltas_modelOut = args.gpdtsMo, \
-		phi_deltas_of_modelOut = [args.lsdtsMo], sigma_Zs = args.sigZs, sigma_deltas_of_modelOut = args.sigdtsMo)
-	# gen_simData(args.SEED, args.numObs)
+		phi_deltas_of_modelOut = [args.lsdtsMo], sigma_Zs = args.sigZs, sigma_deltas_of_modelOut = args.sigdtsMo, num_tildZs = args.numMo)
+	# plot_predic_Zs_sim()
+
 
 
 
