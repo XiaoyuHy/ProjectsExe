@@ -12,6 +12,7 @@ import argparse
 import os
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import random
 from rpy2.robjects import r
 # from mpl_toolkits.mplot3d import Axes3D
@@ -149,9 +150,9 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	plt.close()
 
 	plt.figure()
-	im = plt.imshow(np.flipud(all_y_Zs.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap = plt.matplotlib.cm.jet)
+	im1 = plt.imshow(np.flipud(all_y_Zs.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap = plt.matplotlib.cm.jet)
 	# plt.scatter(X_hatZs[:,0], X_hatZs[:,1], s=12, c='k', marker = 'o')
-	cb=plt.colorbar(im)
+	cb=plt.colorbar(im1)
 	cb.set_label('${Z(s)}$')
 	# plt.title('min = %.2f , max = %.2f , avg = %.2f' % (all_y_Zs.min(), all_y_Zs.max(), all_y_Zs.mean()))
 	plt.xlabel('$Longitude$')
@@ -160,11 +161,21 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	plt.savefig('d2_Zs_res' + str(point_res)  + 'SEED' + str(SEED)  + '.png')
 	plt.show()
 	plt.close()
-
-
+	
+	all_y_Zs_withMean = all_y_Zs
 	mean_Zs = np.mean(all_y_Zs)
 
+	fig,ax = plt.subplots()
+	# plt.colorbar(im1,ax=ax, orientation = 'horizontal')
+	plt.colorbar(im1,ax=ax)
+	ax.remove()
+	# plt.savefig('plot_onlycbar_tight.png', bbox_inches='tight')
+	plt.savefig('plot_onlycbar_tight_vert.png', bbox_inches='tight')
+	plt.show()
+	plt.close()
 
+
+	
 	input_folder = 'dataSimulated/numObs_200_numMo_' + str(num_tildZs) + '/seed204/' 
 	mean_predic_in= open(input_folder + 'mean_Predic.pkl', 'rb')
 	mean_predic = pickle.load(mean_predic_in)
@@ -173,9 +184,10 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	upper_bound = np.array([-3., 3.])
 
 	plt.figure()
-	im = plt.imshow(np.flipud(mean_predic.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap = plt.matplotlib.cm.jet)
+	im4 = plt.imshow(np.flipud(mean_predic.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+	 cmap = plt.matplotlib.cm.jet, vmin=all_y_Zs_withMean.min(), vmax = all_y_Zs_withMean.max())
 	# plt.scatter(X_hatZs[:,0], X_hatZs[:,1], s=12, c='k', marker = 'o')
-	cb=plt.colorbar(im)
+	cb=plt.colorbar(im4)
 	cb.set_label('${predicted \ Z(s)}$')
 	# plt.title('min = %.2f , max = %.2f , avg = %.2f' % (all_y_Zs.min(), all_y_Zs.max(), all_y_Zs.mean()))
 	plt.xlabel('$Longitude$')
@@ -258,17 +270,20 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	all_y_tildZs_withMean = all_y_tildZs + mean_Zs
 
 
-	# plt.figure()
-	# im = plt.imshow(np.flipud(all_y_tildZs_withMean.reshape((areal_res, areal_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap = plt.matplotlib.cm.jet)
-	# cb=plt.colorbar(im)
-	# cb.set_label('${X(A_i)}$')
-	# # plt.title('min = %.2f , max = %.2f , avg = %.2f' % (all_y_tildZs.min(), all_y_tildZs.max(), all_y_tildZs.mean()))
-	# plt.xlabel('$Longitude$')
-	# plt.ylabel('$Latitude$')
-	# # plt.grid()
-	# plt.savefig('d2_tildZs_res' + str(areal_res)  + 'SEED' + str(SEED) + '.png')
-	# plt.show()
-	# plt.close()
+	plt.figure()
+	im2 = plt.imshow(np.flipud(all_y_tildZs_withMean.reshape((areal_res, areal_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+		cmap = plt.matplotlib.cm.jet, vmin=all_y_Zs_withMean.min(), vmax = all_y_Zs_withMean.max())
+	cb=plt.colorbar(im2)
+	cb.set_label('${X(A_i)}$')
+	# plt.title('min = %.2f , max = %.2f , avg = %.2f' % (all_y_tildZs.min(), all_y_tildZs.max(), all_y_tildZs.mean()))
+	plt.xlabel('$Longitude$')
+	plt.ylabel('$Latitude$')
+	# plt.grid()
+	plt.savefig('d2_tildZs_res' + str(areal_res)  + 'SEED' + str(SEED) + '.png')
+	plt.show()
+	plt.close()
+
+	# exit(-1)
 
 	# idx = np.random.randint(0, len(all_y_Zs), num_hatZs)
 	idx = random.sample(list(np.arange(len(all_y_Zs))), num_hatZs) # 07/08/2018 This randomly geneated integers are unique
@@ -281,8 +296,8 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 
 	# numMO = np.array([50, 100, 150, 200, 250, 300, 350, 400, 450, 500])
 	
-	numMO = np.array([50,100])
-	# numMO = np.array([50,100, 150, 200, 250, 300])
+	# numMO = np.array([50,100])
+	numMO = np.array([50,100, 150, 200, 250, 300])
 	moIncreNum=50
 
 	modelOutputX = []
@@ -364,11 +379,50 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	plt.scatter(y_hatZs_tmp + mean_Zs, y_hatZs + mean_Zs, color = 'k', label= 'Z(s) versus Y(s)')
 	plt.scatter(areal_Zs_tmp0 + mean_Zs, y_tildZs + mean_Zs, marker = '^', color ='b', label = "Z(s) versus $X(A_i)$")
 	plt.legend(loc='best')
+	plt.title('(d)')
 	plt.savefig('Zs_Ys_XAi_SEED' + str(SEED) + '_numMo' + str(numMO[-1]) + '.png')
 	plt.show()
 	plt.close()
-	exit(-1)
+	
+	Nr = 1
+	Nc = 3
+	# im0 = mpimg.imread('d2_Zs_res1000SEED204.png')
+	# im2 = mpimg.imread('d2_tildZs_res25SEED204.png')
+	# im3 = mpimg.imread('Zs_Ys_XAi_SEED204_numMo300.png')
+	# im4 = mpimg.imread('d2_predicZs_res1000SEED204numMo_300.png')
 
+	fig, axs = plt.subplots(Nr, Nc, sharex=True, sharey=True, figsize=(10,5))
+	axes = axs.flat
+	# plt.subplots_adjust(top=0.95, bottom=0.01)
+	axes[0].imshow(np.flipud(all_y_Zs.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap = plt.matplotlib.cm.jet)
+	# axes[0].set_xlabel('$Longitude$')
+	# axes[0].set_ylabel('$Latitude$')
+	axes[0].axis('off')
+	axes[0].set_title('(a)')
+
+	axes[1].imshow(np.flipud(all_y_tildZs_withMean.reshape((areal_res, areal_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+		cmap = plt.matplotlib.cm.jet, vmin=all_y_Zs_withMean.min(), vmax = all_y_Zs_withMean.max())
+	# axes[1].set_xlabel('$Longitude$')
+	# axes[1].set_ylabel('$Latitude$')
+	axes[1].axis('off')
+	axes[1].set_title('(b)')
+
+	# axes[2].scatter(y_hatZs_tmp + mean_Zs, y_hatZs + mean_Zs, color = 'k', label= 'Z(s) versus Y(s)')
+	# axes[2].scatter(areal_Zs_tmp0 + mean_Zs, y_tildZs + mean_Zs, marker = '^', color ='b', label = "Z(s) versus $X(A_i)$")
+	# axes[2].legend(loc='best')
+	# axes[2].set_title('(c)')
+	axes[2].imshow(np.flipud(mean_predic.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+	 cmap = plt.matplotlib.cm.jet, vmin=all_y_Zs_withMean.min(), vmax = all_y_Zs_withMean.max())
+	# axes[3].set_xlabel('$Longitude$')
+	# axes[3].set_ylabel('$Latitude$')
+	axes[2].axis('off')
+	axes[2].set_title('(c)')
+
+	# plt.colorbar(im1, ax=axs, orientation = 'horizontal')
+	plt.colorbar(im1, ax=axs.ravel().tolist(), shrink=0.5)
+	plt.savefig('simPlots_' + 'SEED' + str(SEED) + '1.png')
+	plt.show()
+	plt.close()
 
 
 if __name__ == '__main__':
@@ -381,8 +435,8 @@ if __name__ == '__main__':
 	p.add_argument('-sigdtsMo', type=float, dest='sigdtsMo', default=0.5, help='sigma (marginal variance) of the GP covariance for deltas of model output')
 	p.add_argument('-gpdtsMo', dest='gpdtsMo', default=False,  type=lambda x: (str(x).lower() == 'true'), \
 		help='flag for whether deltas of model output is a GP')
-	p.add_argument('-numMo', type=int, dest='numMo', default=50, help='Number of model outputs used in modelling')
-	p.add_argument('-numObs', type=int, dest='numObs', default=200, help='Number of observations used in modelling')
+	p.add_argument('-numMo', type=int, dest='numMo', default=300, help='Number of model outputs used in modelling')
+	p.add_argument('-numObs', type=int, dest='numObs', default=300, help='Number of observations used in modelling')
 	args = p.parse_args()
 	# if args.output is None: args.output = os.getcwd()
 	# output_folder = args.output

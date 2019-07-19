@@ -4,6 +4,8 @@ import pickle
 import argparse
 import os
 import matplotlib.colors
+import matplotlib as mpl
+from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 
 def plot(useSimData):
 	
@@ -11,7 +13,7 @@ def plot(useSimData):
 	if useSimData:
 		#The following seeds are for R simulated Gamma transformed data see dataRsimGammaTransformErrorInZtilde
 		# seeds = np.array(list(np.arange(200, 206)) + list(np.arange(207, 263)) + list(np.arange(264, 282)) + list(np.arange(283, 300)))
-        #The following seeds are for R simulated, more skewed Gamma transformed data (arealRes 25, res of areal cooridated 10 by 10, but res of areal Zs 40*40) see dataSimulated
+		#The following seeds are for R simulated, more skewed Gamma transformed data (arealRes 25, res of areal cooridated 10 by 10, but res of areal Zs 40*40) see dataSimulated
 		seeds = (200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219)
 	else:
 		seeds = range(120, 220)
@@ -351,20 +353,20 @@ def resGridDataFusionVsKrig(numMo):
 	cmap0 = cmap.from_list('Custom cmap', cmaplist, cmap.N)
 
 	# define the bins and normalize
-	bounds = np.linspace(0, np.ceil(rmse_krig_outSample.max()),20)
+	bounds = np.round(np.linspace(0, np.ceil(rmse_krig_outSample.max()), 20),0)
 	norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
 
 	plt.figure()
-	im = plt.imshow(np.flipud(rmse_krig_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+	im1 = plt.imshow(np.flipud(rmse_krig_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
 		cmap  =cmap0, norm = norm0)
-	cb=plt.colorbar(im)
+	cb=plt.colorbar(im1)
 	cb.set_label('${RMSE}$')
 	plt.xlabel('$lon$')
 	plt.ylabel('$lat$')
 	# plt.title('RMSE - Kriging')
 	# plt.grid()
-	plt.savefig(output_folder + 'Krig_predic_RMSE.png')
+	# plt.savefig(output_folder + 'Krig_predic_RMSE.png')
 	plt.show()
 	plt.close()
 	
@@ -374,19 +376,19 @@ def resGridDataFusionVsKrig(numMo):
 	print(avgVar_krig_outSample)
 
 
-	bounds = np.linspace(6.0, np.ceil(avgVar_krig_outSample.max()),20)
+	bounds = np.round(np.linspace(6.0, np.ceil(avgVar_krig_outSample.max()),20), 1)
 	norm1 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
 	plt.figure()
-	im = plt.imshow(np.flipud(avgVar_krig_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+	im2 = plt.imshow(np.flipud(avgVar_krig_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
 		cmap =cmap0, norm = norm1)
-	cb=plt.colorbar(im)
+	cb=plt.colorbar(im2)
 	cb.set_label('${STD}$')
 	plt.xlabel('$lon$')
 	plt.ylabel('$lat$')
 	# plt.title('Width of confidence interval - Kriging')
 	# plt.grid()
-	plt.savefig(output_folder + 'Krig_predic_std.png')
+	# plt.savefig(output_folder + 'Krig_predic_std.png')
 	plt.show()
 	plt.close()
 
@@ -398,19 +400,19 @@ def resGridDataFusionVsKrig(numMo):
 	print ('median predicAccuracy_krig_outSample is ' + str(np.median(predicAccuracy_krig_outSample)))
 
 
-	bounds = np.linspace(0.8, 1.0, 20)
+	bounds = np.round(np.linspace(0.8, 1.0, 20), 2)
 	norm2 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
 	plt.figure()
-	im = plt.imshow(np.flipud(predicAccuracy_krig_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+	im3 = plt.imshow(np.flipud(predicAccuracy_krig_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
 		cmap =cmap0, norm = norm2)
-	cb=plt.colorbar(im)
+	cb=plt.colorbar(im3)
 	cb.set_label('${Coverage}$')
 	plt.xlabel('$lon$')
 	plt.ylabel('$lat$')
 	# plt.title('Coverage probability - Kriging')
 	# plt.grid()
-	plt.savefig(output_folder + 'Krig_predic_coverage.png')
+	# plt.savefig(output_folder + 'Krig_predic_coverage.png')
 	plt.show()
 	plt.close()
 
@@ -444,17 +446,17 @@ def resGridDataFusionVsKrig(numMo):
 	print (rmse_bm_outSample)
 
 	plt.figure()
-	im = plt.imshow(np.flipud(rmse_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+	im4 = plt.imshow(np.flipud(rmse_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
 		cmap =cmap0, norm=norm0)
 	# im = plt.imshow(np.flipud(rmse_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
 	# 	cmap =plt.matplotlib.cm.jet, vmin =0, vmax = rmse_bm_outSample.max())
-	cb=plt.colorbar(im)
+	cb=plt.colorbar(im4)
 	cb.set_label('${RMSE}$')
 	plt.xlabel('$lon$')
 	plt.ylabel('$lat$')
 	# plt.title('RMSE - Data assimilation')
 	# plt.grid()
-	plt.savefig(output_folder + 'DF_predic_RMSE.png')
+	# plt.savefig(output_folder + 'DF_predic_RMSE.png')
 	plt.show()
 	plt.close()
 
@@ -463,17 +465,17 @@ def resGridDataFusionVsKrig(numMo):
 	print (avgVar_bm_outSample)
 
 	plt.figure()
-	im = plt.imshow(np.flipud(avgVar_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+	im5 = plt.imshow(np.flipud(avgVar_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
 		cmap =cmap0, norm = norm1)
 	# im = plt.imshow(np.flipud(avgVar_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
 	# 	cmap =plt.matplotlib.cm.jet, vmin =0, vmax = avgVar_bm_outSample.max())
-	cb=plt.colorbar(im)
+	cb=plt.colorbar(im5)
 	cb.set_label('${STD}$')
 	plt.xlabel('$lon$')
 	plt.ylabel('$lat$')
 	# plt.title('Width of confidence interval - Data assimilation')
 	# plt.grid()
-	plt.savefig(output_folder + 'DF_predic_std.png')
+	# plt.savefig(output_folder + 'DF_predic_std.png')
 	plt.show()
 	plt.close()
 
@@ -485,28 +487,85 @@ def resGridDataFusionVsKrig(numMo):
 	print ('median predicAccuracy_bm_outSample is ' + str(np.median(predicAccuracy_bm_outSample)))
 
 	plt.figure()
-	im = plt.imshow(np.flipud(predicAccuracy_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+	im6 = plt.imshow(np.flipud(predicAccuracy_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
 		cmap =cmap0, norm = norm2)
 	# im = plt.imshow(np.flipud(predicAccuracy_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
 	# 	cmap =plt.matplotlib.cm.jet, vmin =0.8, vmax = predicAccuracy_bm_outSample.max())
-	cb=plt.colorbar(im)
+	cb=plt.colorbar(im6)
 	cb.set_label('${Coverage}$')
 	plt.xlabel('$lon$')
 	plt.ylabel('$lat$')
 	# plt.title('Coverage probability - Data assimilation')
 	# plt.grid()
-	plt.savefig(output_folder + 'DF_predic_coverage.png')
+	# plt.savefig(output_folder + 'DF_predic_coverage.png')
+	plt.show()
+	plt.close()
+	
+	Nr = 1
+	Nc = 2
+	fig, ax = plt.subplots(Nr, Nc, constrained_layout= True)
+	axs = ax.flat
+	axs[0].imshow(np.flipud(rmse_krig_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+		cmap  =cmap0, norm = norm0)
+	# axs[0].set_xlabel('$Longitude$')
+	# axs[0].set_ylabel('$Latitude$')
+	axs[0].set_title('(a) RMSE - Kriging')
+	axs[1].imshow(np.flipud(rmse_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+		cmap =cmap0, norm=norm0)
+	# axs[1].set_xlabel('$Longitude$')
+	# axs[1].set_ylabel('$Latitude$')
+	axs[1].set_title('(b) RMSE - DF')
+	plt.colorbar(im1, ax=ax.ravel().tolist(), shrink=0.50)
+	plt.savefig('KrigVsDf_RMSE.png')
 	plt.show()
 	plt.close()
 
+	Nr = 1
+	Nc = 2
+	fig, ax = plt.subplots(Nr, Nc, constrained_layout= True)
+	axs = ax.flat
+	axs[0].imshow(np.flipud(avgVar_krig_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+		cmap =cmap0, norm = norm1)
+	# axs[0].set_xlabel('$Longitude$')
+	# axs[0].set_ylabel('$Latitude$')
+	axs[0].set_title('(c) AWCI - Kriging')
+	axs[1].imshow(np.flipud(avgVar_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+		cmap =cmap0, norm = norm1)
+	# axs[1].set_xlabel('$Longitude$')
+	# axs[1].set_ylabel('$Latitude$')
+	axs[1].set_title('(d) AWCI - DF')
+	plt.colorbar(im2, ax=ax.ravel().tolist(), shrink=0.50)
+	plt.savefig('KrigVsDf_AWCI.png')
+	plt.show()
+	plt.close()
+
+
+	Nr = 1
+	Nc = 2
+	fig, ax = plt.subplots(Nr, Nc, constrained_layout= True)
+	axs = ax.flat
+	axs[0].imshow(np.flipud(predicAccuracy_krig_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+		cmap =cmap0, norm = norm2)
+	# axs[0].set_xlabel('$Longitude$')
+	# axs[0].set_ylabel('$Latitude$')
+	axs[0].set_title('(e) CP - Kriging')
+	axs[1].imshow(np.flipud(predicAccuracy_bm_outSample.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+		cmap =cmap0, norm = norm2)
+	# axs[1].set_xlabel('$Longitude$')
+	# axs[1].set_ylabel('$Latitude$')
+	axs[1].set_title('(f) CP - DF')
+	plt.colorbar(im3, ax=ax.ravel().tolist(), shrink=0.50)
+	plt.savefig('KrigVsDf_CP.png')
+	plt.show()
+	plt.close()
 
 if __name__ == '__main__':
 	p = argparse.ArgumentParser()
 	p.add_argument('-useSimData', dest='useSimData', default=True,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether to use simulated data')
 	p.add_argument('-numMo', type=int, dest='numMo', default=300, help='Number of model outputs used in modelling')
 	args = p.parse_args()
-	# resGridDataFusionVsKrig(args.numMo)
-	plot(args.useSimData)
+	resGridDataFusionVsKrig(args.numMo)
+	# plot(args.useSimData)
 
 
 
