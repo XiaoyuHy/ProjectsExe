@@ -385,11 +385,47 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	plt.close()
 	
 	Nr = 1
-	Nc = 3
+	Nc = 4
 	# im0 = mpimg.imread('d2_Zs_res1000SEED204.png')
 	# im2 = mpimg.imread('d2_tildZs_res25SEED204.png')
 	# im3 = mpimg.imread('Zs_Ys_XAi_SEED204_numMo300.png')
 	# im4 = mpimg.imread('d2_predicZs_res1000SEED204numMo_300.png')
+
+	fig, (ax1, ax2, ax3, cax) = plt.subplots(Nr, Nc,  figsize=(17,5), gridspec_kw={"width_ratios":[1,1, 1, 0.1]})
+
+	# plt.subplots_adjust(top=0.95, bottom=0.01)
+	ax1.imshow(np.flipud(all_y_Zs.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]),\
+		cmap = plt.matplotlib.cm.jet, aspect = "auto")
+	# axes[0].set_xlabel('$Longitude$')
+	# axes[0].set_ylabel('$Latitude$')
+	ax1.axis('off')
+	ax1.set_title('(a)')
+
+	ax2.imshow(np.flipud(all_y_tildZs_withMean.reshape((areal_res, areal_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+		cmap = plt.matplotlib.cm.jet, vmin=all_y_Zs_withMean.min(), vmax = all_y_Zs_withMean.max(), aspect = "auto")
+	# axes[1].set_xlabel('$Longitude$')
+	# axes[1].set_ylabel('$Latitude$')
+	ax2.axis('off')
+	ax2.set_title('(b)')
+
+	# axes[2].scatter(y_hatZs_tmp + mean_Zs, y_hatZs + mean_Zs, color = 'k', label= 'Z(s) versus Y(s)')
+	# axes[2].scatter(areal_Zs_tmp0 + mean_Zs, y_tildZs + mean_Zs, marker = '^', color ='b', label = "Z(s) versus $X(A_i)$")
+	# axes[2].legend(loc='best')
+	# axes[2].set_title('(c)')
+	ax3.imshow(np.flipud(mean_predic.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), \
+	 cmap = plt.matplotlib.cm.jet, vmin=all_y_Zs_withMean.min(), vmax = all_y_Zs_withMean.max(), aspect = "auto")
+	# axes[3].set_xlabel('$Longitude$')
+	# axes[3].set_ylabel('$Latitude$')
+	ax3.axis('off')
+	ax3.set_title('(c)')
+
+	# plt.colorbar(im1, ax=axs, orientation = 'horizontal')
+	plt.colorbar(im1, cax= cax, ax=[ax1,ax2, ax3], use_gridspec = True)
+	plt.subplots_adjust(wspace=0.2, hspace=0)
+	plt.savefig('simPlots_' + 'SEED' + str(SEED) + '3.png')
+	plt.show()
+	plt.close()
+	exit(-1)
 
 	fig, axs = plt.subplots(Nr, Nc, sharex=True, sharey=True, figsize=(10,5))
 	axes = axs.flat
@@ -419,8 +455,8 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	axes[2].set_title('(c)')
 
 	# plt.colorbar(im1, ax=axs, orientation = 'horizontal')
-	plt.colorbar(im1, ax=axs.ravel().tolist(), shrink=0.5)
-	plt.savefig('simPlots_' + 'SEED' + str(SEED) + '1.png')
+	plt.colorbar(im1, ax=axs.ravel().tolist(), shrink=0.75)
+	plt.savefig('simPlots_' + 'SEED' + str(SEED) + '.png')
 	plt.show()
 	plt.close()
 
