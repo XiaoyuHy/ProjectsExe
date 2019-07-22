@@ -601,10 +601,39 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             axs[1].set_xlabel('$Longitude$')
             axs[1].set_ylabel('$Latitude$')
             axs[1].set_title('(b)')
-            plt.colorbar(figPredicMos, ax=ax.ravel().tolist(), shrink=0.70)
+            plt.colorbar(figPredicMos, ax=ax.ravel().tolist(), shrink=0.80)
             plt.savefig('figObsMos.png')
             plt.show()
             plt.close()
+
+            Nr = 1
+            Nc = 3
+            fig, (ax1, ax2,cax) = plt.subplots(Nr, Nc, figsize=(12,5), gridspec_kw={"width_ratios":[1, 1, 0.06]})
+
+            im1=ax1.imshow(np.flipud(np.array(z_mos).reshape((500, 500))), extent=(-11.7, -3.21, -6.2, 3.0), cmap  =cmap, norm = norm0, aspect = "auto")
+            ax1.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=cmap, norm= norm0, edgecolors='k')
+            ax1.plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
+            ax1.set_xlabel('$Longitude$')
+            ax1.set_ylabel('$Latitude$')
+            # ax1.axis('off')
+            ax1.set_title('(a)')
+
+            figPredicMos = ax2.imshow(np.flipud(np.array(z_predicMos).reshape((500, 500))), extent=(-11.7, -3.21, -6.2, 3.0), cmap  =cmap, norm = norm0, aspect = "auto")
+            ax2.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=cmap, norm= norm0, edgecolors='k')
+            ax2.plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
+            ax2.set_xlabel('$Longitude$')
+            ax2.set_ylabel('$Latitude$')
+            # ax2.axis('off')
+            ax2.set_title('(b)')
+
+            # plt.colorbar(im1, ax=axs, orientation = 'horizontal')
+            plt.colorbar(figPredicMos, cax= cax, ax=[ax1,ax2], use_gridspec = True)
+            plt.subplots_adjust(wspace=0.2, hspace=0)
+            plt.savefig('figObsMos1.png')
+            plt.show()
+            plt.close()
+
+
 
 
 if __name__ == '__main__':

@@ -725,7 +725,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         axs[1].set_ylabel('$Latitude$')
         axs[1].set_title('(b)')
         ax[1].legend(handles=legend_elements, loc='best')
-        plt.colorbar(modelOutputs, ax=ax.ravel().tolist(), shrink=0.80)
+        plt.colorbar(modelOutputs, ax=ax.ravel().tolist())
         plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Obs&Mo' + str(numMo) + '.png')
         plt.show()
         plt.close()
