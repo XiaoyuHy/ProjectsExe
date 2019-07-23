@@ -585,6 +585,19 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             bounds = np.round(np.linspace(6, 42, 20),0)
             norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
+            plt.figure()
+            im=plt.imshow(np.flipud(np.array(z_mos).reshape((500, 500))), extent=(-11.7, -3.21, -6.2, 3.0), cmap  =cmap, norm = norm0)
+            plt.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=cmap, norm= norm0, edgecolors='k')
+            plt.plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
+            plt.xlabel('$Longitude$')
+            plt.ylabel('$Latitude$')
+            plt.colorbar(im)
+            plt.savefig("SEED120TrainObsAndAllTrainMo500_v1.png")
+            plt.show()
+            plt.close()
+            exit(-1)
+
+
             Nr = 1
             Nc = 2
             fig, ax = plt.subplots(Nr, Nc, constrained_layout= True, sharex=True, sharey=True, figsize=(10,5))
@@ -605,6 +618,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             plt.savefig('figObsMos.png')
             plt.show()
             plt.close()
+
 
             Nr = 1
             Nc = 3
