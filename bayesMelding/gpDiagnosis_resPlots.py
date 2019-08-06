@@ -93,7 +93,7 @@ def plot_qq_parUncerty(parUncertyOverSeeds = False, numMo = 500, SEED=None, indi
 	num_Outputs = samples_Zs.shape[1]
 	std_norm_quantile = np.array([stats.norm.ppf((i-0.5)/num_Outputs) for i in range(1, num_Outputs+1)])
 	print(Lqunatile, Uqunatile)
-	exit(-1)
+	# exit(-1)
 
 	plt.figure
 	sm.qqplot(std_yEst_Zs, line='45')
@@ -110,7 +110,7 @@ def plot_qq_parUncerty(parUncertyOverSeeds = False, numMo = 500, SEED=None, indi
 	plt.xlabel('Theoretical Quantiles')
 	plt.ylabel('Sample Quantiles')
 	plt.legend(loc='best')
-	plt.savefig(output_folder + 'SEED'+ str(SEED) +'OutSampQQ_indivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.png')
+	plt.savefig(output_folder + 'SEED'+ str(SEED) +'OutSampQQ_indivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.eps')
 	plt.show()
 	plt.close()
 	# QQ plot for insample predeiction for Zhat
@@ -134,7 +134,7 @@ def plot_qq_parUncerty(parUncertyOverSeeds = False, numMo = 500, SEED=None, indi
 	plt.xlabel('Theoretical Quantiles')
 	plt.ylabel('Sample Quantiles')
 	plt.legend(loc='best')
-	plt.savefig(output_folder + 'SEED'+ str(SEED) +'QQ_inSampConZhat_IndivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.png')   
+	plt.savefig(output_folder + 'SEED'+ str(SEED) +'QQ_inSampConZhat_IndivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.eps')   
 	plt.show()
 	plt.close()
 	# QQ plot for insample predicitons for Ztilde
@@ -159,7 +159,7 @@ def plot_qq_parUncerty(parUncertyOverSeeds = False, numMo = 500, SEED=None, indi
 	plt.xlabel('Theoretical Quantiles')
 	plt.ylabel('Sample Quantiles')
 	plt.legend(loc='best')
-	plt.savefig(output_folder + 'SEED'+ str(SEED) + 'QQ_inSampZtildeConZhat_indivErr' + str(indivError) + 'idx' + str(index_Xaxis) + '.png')
+	plt.savefig(output_folder + 'SEED'+ str(SEED) + 'QQ_inSampZtildeConZhat_indivErr' + str(indivError) + 'idx' + str(index_Xaxis) + '.eps')
 	plt.show()
 	plt.close()    
 
@@ -198,6 +198,6 @@ if __name__ == '__main__':
 	p.add_argument('-parUncertyCI', dest='parUncertyCI', default=True,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether taking into account parameter uncertainty for a fixed seed for GP credible interval diagnosis')
 
 	args = p.parse_args() 
-	# plot_qq_parUncerty(args.parUncertyOverSeeds, args.numMo, args.SEED)
-	CI_parUntercy()
+	plot_qq_parUncerty(args.parUncertyOverSeeds, args.numMo, args.SEED)
+	# CI_parUntercy()
 	

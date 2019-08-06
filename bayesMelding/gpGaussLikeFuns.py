@@ -401,8 +401,8 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         if predicMo:
             output_folder = 'Data/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED) + '/predicMo'
         else:
-            # output_folder = 'DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED) 
-            output_folder = 'Data/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED) 
+            output_folder = 'DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED) 
+            # output_folder = 'Data/FPstart2016020612_FR_numObs_128_numMo_' + str(numMo) + '/seed' + str(SEED) 
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     output_folder += '/'
@@ -629,7 +629,7 @@ if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument('-SEED', type=int, dest='SEED', default=120, help='The simulation index')
     p.add_argument('-numObs', type=int, dest='numObs', default=128, help='Number of observations used in modelling')
-    p.add_argument('-numMo', type=int, dest='numMo', default=50, help='Number of model outputs used in modelling')
+    p.add_argument('-numMo', type=int, dest='numMo', default=500, help='Number of model outputs used in modelling')
     p.add_argument('-crossValFlag', dest='crossValFlag', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='whether to validate the model using cross validation')
     p.add_argument('-useSimData', dest='useSimData', default=False,  type=lambda x: (str(x).lower() == 'true'), \
@@ -644,8 +644,8 @@ if __name__ == '__main__':
         # input_folder = os.getcwd() + '/dataRsimNoFrGammaTransformArealRes25Cods100butArealZs100/numObs_200_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
         input_folder = os.getcwd() + '/dataSimulated/numObs_200_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
     else:
-        # input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
-        input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+        input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
+        # input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128_numMo_' + str(args.numMo) + '/seed' + str(args.SEED) + '/'
 
     X_hatZs_in = open(input_folder + 'X_hatZs.pkl', 'rb')
     X_hatZs = pickle.load(X_hatZs_in) 
@@ -701,8 +701,8 @@ if __name__ == '__main__':
             # X_test = np.array(list(chain.from_iterable(X_tildZs)))
             # y_test = y_tildZs
 
-            # input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
-            input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
+            input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
+            # input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
             all_X_Zs_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
             all_X_Zs = pickle.load(all_X_Zs_in) 
 

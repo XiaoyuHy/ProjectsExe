@@ -585,29 +585,35 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             bounds = np.round(np.linspace(6, 42, 20),0)
             norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
-            plt.figure()
-            im=plt.imshow(np.flipud(np.array(z_mos).reshape((500, 500))), extent=(-11.7, -3.21, -6.2, 3.0), cmap  =cmap, norm = norm0)
+            fig = plt.figure()
+            fig.set_rasterized(True)
+            ax = fig.add_subplot(111)
+            ax.set_rasterized(True)
+            im=ax.imshow(np.flipud(np.array(z_mos).reshape((500, 500))), extent=(-11.7, -3.21, -6.2, 3.0), cmap  =cmap, norm = norm0)
             plt.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=cmap, norm= norm0, edgecolors='k')
             plt.plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
             plt.xlabel('$Longitude$')
             plt.ylabel('$Latitude$')
             plt.colorbar(im)
-            plt.savefig("SEED120TrainObsAndAllTrainMo500_v1.png")
+            plt.savefig("SEED120TrainObsAndAllTrainMo500_v1.eps",rasterized=True)
             plt.show()
             plt.close()
-            exit(-1)
+          
 
 
             Nr = 1
             Nc = 2
             fig, ax = plt.subplots(Nr, Nc, constrained_layout= True, sharex=True, sharey=True, figsize=(10,5))
+            fig.set_rasterized(True)
             axs = ax.flat
+            axs[0].set_rasterized(True)
             axs[0].imshow(np.flipud(np.array(z_mos).reshape((500, 500))), extent=(-11.7, -3.21, -6.2, 3.0), cmap  =cmap, norm = norm0)
             ax[0].scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=cmap, norm= norm0, edgecolors='k')
             ax[0].plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
             axs[0].set_xlabel('$Longitude$')
             axs[0].set_ylabel('$Latitude$')
             axs[0].set_title('(a)')
+            axs[1].set_rasterized(True)
             figPredicMos = axs[1].imshow(np.flipud(np.array(z_predicMos).reshape((500, 500))), extent=(-11.7, -3.21, -6.2, 3.0), cmap  =cmap, norm = norm0)
             ax[1].scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=cmap, norm= norm0, edgecolors='k')
             ax[1].plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
@@ -615,7 +621,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             axs[1].set_ylabel('$Latitude$')
             axs[1].set_title('(b)')
             plt.colorbar(figPredicMos, ax=ax.ravel().tolist(), shrink=0.80)
-            plt.savefig('figObsMos.png')
+            plt.savefig('figObsMos.eps',rasterized=True)
             plt.show()
             plt.close()
 
@@ -643,7 +649,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             # plt.colorbar(im1, ax=axs, orientation = 'horizontal')
             plt.colorbar(figPredicMos, cax= cax, ax=[ax1,ax2], use_gridspec = True)
             plt.subplots_adjust(wspace=0.2, hspace=0)
-            plt.savefig('figObsMos1.png')
+            plt.savefig('figObsMos1.eps')
             plt.show()
             plt.close()
 

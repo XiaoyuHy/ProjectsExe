@@ -263,7 +263,7 @@ def plot(useSimData):
 	plt.ylabel('RMSE')
 	plt.legend(loc='upper left')
 	# plt.title('Out of sample prediction')
-	plt.savefig(output_folder + 'RMSE_outSample.png')
+	plt.savefig(output_folder + 'RMSE_outSample.eps')
 	plt.show()
 	plt.close()
 
@@ -280,7 +280,7 @@ def plot(useSimData):
 	plt.ylabel('Average width of 0.95 confidence interval')
 	plt.legend(loc='upper left')
 	# plt.title('Out of sample prediction')
-	plt.savefig(output_folder + 'avgVar_outSample.png')
+	plt.savefig(output_folder + 'avgVar_outSample.eps')
 	plt.show()
 	plt.close()
 
@@ -299,7 +299,7 @@ def plot(useSimData):
 	plt.ylabel('Coverage probability (%)')
 	plt.legend(loc='lower left')
 	# plt.title('Out of sample prediction')
-	plt.savefig(output_folder + 'predicAccuracy_outSample.png')
+	plt.savefig(output_folder + 'predicAccuracy_outSample.eps')
 	plt.show()
 	plt.close()   
 def resGridDataFusionVsKrig(numMo):
@@ -516,7 +516,7 @@ def resGridDataFusionVsKrig(numMo):
 	# axs[1].set_ylabel('$Latitude$')
 	axs[1].set_title('(b) RMSE - DF')
 	plt.colorbar(im1, ax=ax.ravel().tolist(), shrink=0.50)
-	plt.savefig('KrigVsDf_RMSE.png')
+	plt.savefig('KrigVsDf_RMSE.eps')
 	plt.show()
 	plt.close()
 
@@ -535,7 +535,7 @@ def resGridDataFusionVsKrig(numMo):
 	# axs[1].set_ylabel('$Latitude$')
 	axs[1].set_title('(d) AWCI - DF')
 	plt.colorbar(im2, ax=ax.ravel().tolist(), shrink=0.50)
-	plt.savefig('KrigVsDf_AWCI.png')
+	plt.savefig('KrigVsDf_AWCI.eps')
 	plt.show()
 	plt.close()
 
@@ -555,7 +555,7 @@ def resGridDataFusionVsKrig(numMo):
 	# axs[1].set_ylabel('$Latitude$')
 	axs[1].set_title('(f) CP - DF')
 	plt.colorbar(im3, ax=ax.ravel().tolist(), shrink=0.50)
-	plt.savefig('KrigVsDf_CP.png')
+	plt.savefig('KrigVsDf_CP.eps')
 	plt.show()
 	plt.close()
 
@@ -564,8 +564,8 @@ if __name__ == '__main__':
 	p.add_argument('-useSimData', dest='useSimData', default=True,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether to use simulated data')
 	p.add_argument('-numMo', type=int, dest='numMo', default=300, help='Number of model outputs used in modelling')
 	args = p.parse_args()
-	resGridDataFusionVsKrig(args.numMo)
-	# plot(args.useSimData)
+	# resGridDataFusionVsKrig(args.numMo)
+	plot(args.useSimData)
 
 
 

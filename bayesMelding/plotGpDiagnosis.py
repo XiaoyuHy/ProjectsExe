@@ -690,59 +690,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 		# print 'rounded upper_interval is ' + str(upper_interval_rounded)
 		# print 'rounded lower_interval is ' + str(lower_interval_rounded)
 
-		lower_chol =  np.linalg.cholesky(cov_of_predic)
-		num_Outputs =  cov_of_predic.shape[0]
-		samples_Zs = []
-		succRate = []
-		for i in range(1000):
-			tmp = np.dot(lower_chol, np.random.normal(0., 1., num_Outputs))
-			sample_tmp = tmp + mu_star
-			tmp = np.dot(inv_G, tmp)
-			tmp = np.sort(tmp)
-			samples_Zs.append(tmp)
-
-			flag_in_confiInterv_r = (sample_tmp >= lower_interval_rounded) & (sample_tmp <= upper_interval_rounded)
-			flag_in_confiInterv_r = flag_in_confiInterv_r.astype(int)
-			count_in_confiInterv_r  = np.sum(flag_in_confiInterv_r.astype(int))
 			
-			succRate_tmp = np.round(count_in_confiInterv_r/np.float(len(y_test)), 3)
-			succRate.append(succRate_tmp)
-		succRate = np.array(succRate)
-		mean_succRate = np.mean(succRate)
-		std_succRate = np.std(succRate)
-		median_succRate = np.quantile(succRate, 0.5)
-		Lqunatile_succRate = np.quantile(succRate, 0.025)
-		Uqunatile_succRate = np.quantile(succRate, 0.975)
-		print('mean_succRate, std_succRate, Lqunatile_succRate, median_succRate, Uqunatile_succRate is ' + \
-			str((mean_succRate, std_succRate, Lqunatile_succRate, median_succRate, Uqunatile_succRate)))
-		
-		samples_Zs = np.array(samples_Zs)
-		print('shape of samples_Zs is ' + str(samples_Zs.shape))
-		Lqunatile = np.quantile(samples_Zs, 0.025, axis=0)
-		Uqunatile = np.quantile(samples_Zs, 0.975, axis=0)
-		print(Lqunatile, Uqunatile)
-
-		std_norm_quantile = np.array([stats.norm.ppf((i-0.5)/num_Outputs) for i in range(1, num_Outputs+1)])
-
-		plt.figure
-		sm.qqplot(standardised_y_estimate, line='45')
-		plt.savefig(output_folder + 'SEED'+ str(SEED) +'OutSampQQ_indivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + 'NoCI.png')
-		plt.show()
-		plt.close()
-
-		plt.figure()
-		# sm.qqplot(standardised_y_estimate, line='45')
-		plt.scatter(std_norm_quantile, np.sort(standardised_y_estimate), marker = '.', color ='b', label='Truth')
-		plt.scatter(std_norm_quantile, Uqunatile, color = 'k', marker = '_', label='Upper_CI') 
-		plt.scatter(std_norm_quantile, Lqunatile, color = 'green', marker = '_', label='Lower_CI') 
-		plt.plot(std_norm_quantile, std_norm_quantile, color='r')
-		plt.xlabel('Theoretical Quantiles')
-		plt.ylabel('Sample Quantiles')
-		plt.legend(loc='best')
-		plt.savefig(output_folder + 'SEED'+ str(SEED) +'OutSampQQ_indivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.png')
-		plt.show()
-		plt.close()
-		
 	print(np.abs(standardised_y_estimate))
 	idx_largeResiduls = np.argsort(np.abs(standardised_y_estimate))[-3:]
 	print(idx_largeResiduls)
@@ -774,11 +722,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 		upper_interv_predic = upper_interv_predic + mean_y_hatZs
 		lower_interv_predic = lower_interv_predic + mean_y_hatZs
 
-		# print('maximum of y_test is ' + str(y_test.max()))
-		# print('maximum of y_tildZs is ' + str(y_tildZs.max()))
-		# print('minimum of y_test is ' + str(y_test.min()))
-		# print('minimum of y_tildZs is ' + str(y_tildZs.min()))
-
+		
 		max_all = np.array([y_test.max(), y_train_withMean.max(), y_tildZs_withMean.max()]).max()
 		print('max_all is ' + str(max_all))
 		min_all = np.array([y_test.min(),y_train_withMean.min(), y_tildZs_withMean.min()]).min()
@@ -787,93 +731,11 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 		if predicMo:
 			plot_predictedMo(X_train, y_train_withMean, X_test, y_test, mu_star)
 
-		# X_mo = np.array(list(chain.from_iterable(X_tildZs)))
-		# plt.figure()
-		# plt.scatter(X_mo[:, 0], X_mo[:, 1],  c = y_tildZs, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, marker ='s', s=2)
-		# plt.show()
-		# exit(-1)
-
-		plt.figure()
-		plt.plot(y_test, y_test, ls='-', color = 'r')
-		plt.scatter(y_test, mu_star, color='black', label='predic_mean')
-		plt.scatter(y_test, upper_interv_predic, color = 'blue', label = 'predic_upper_CI', marker = '^')
-		plt.scatter(y_test, lower_interv_predic, color ='green', label = 'predic_lower_CI', marker = 'v')
-		plt.xlabel('Observations')
-		plt.ylabel('Predictions')
-		plt.legend(loc='best')
-		# plt.title('Out of sample prediction')
-		# plt.savefig(output_folder + 'BM_predic_scatter_seed' + str(SEED)+ 'numMo' + str(numMo) + 'mean.png')
-		plt.show()
-		plt.close()
-
-
-		# residuals = y_test - mu_star
-		residuals = standardised_y_estimate
-		print(residuals)
-		if indivError:
-			max_coords = X_test[np.argsort(np.abs(residuals))[-3:], :]
-		else:
-			X_testTmp = X_test[pivot, :]
-			max_coords = X_testTmp[np.argsort(np.abs(residuals))[-3:], :]
-		print('max_coords of residuals is ' + str(max_coords))
-
-		maxAbs = np.array([np.abs(residuals.min()), np.abs(residuals.max())]).max()
-
-		fig, ax = plt.subplots()
-		# cmap = mpl.colors.ListedColormap(['red', 'green', 'orange' ,'blue',  'cyan', 'white'])
-		cmap = mpl.colors.ListedColormap(["#00007F", "blue",'cyan', 'white', 'green', "red", "#7F0000"])
-		# cmap.set_over('0.25')
-		# cmap.set_under('0.75')
-		cmap.set_under("crimson")
-		cmap.set_over('black')
-
-		if maxAbs >4:
-			bounds = np.array([-np.ceil(maxAbs), -4, -2, -1, 1, 2, 4, np.ceil(maxAbs)])
-		else:
-			bounds = np.array([-np.ceil(maxAbs), -2, -1, 1, 2,  np.ceil(maxAbs)])
-			cmap = mpl.colors.ListedColormap(["blue", 'cyan', 'white', 'green',  "red"])
-		norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
-
-		# residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
-		if indivError:
-			# residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= standardised_y_estimate, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
-			residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= standardised_y_estimate, cmap=cmap, norm= norm0)
-		else:
-			# residualsPlot = ax.scatter(X_test[pivot, 0], X_test[pivot, 1], c= standardised_y_estimate, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
-			residualsPlot = ax.scatter(X_test[pivot, 0], X_test[pivot, 1], c= standardised_y_estimate, cmap=cmap, norm = norm0)
-
-		plt.xlabel('Longitude')
-		plt.ylabel('Latitude')
-		# plt.title('Residuals of out-of-sample prediction')
-		plt.colorbar(residualsPlot, ax=ax)
-		plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) +  '_outSampleStd.png')
-		plt.show()
-		plt.close()
-	   
-		# numpy2ri.activate() 
-		# plot_seq = r.pretty(np.arange(6,42), 20)
-		# jet_colors = r.colorRampPalette(r.c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
-		# pal = jet_colors(len(plot_seq) - 1)
-		# pal = np.array(pal)
-		# numpy2ri.deactivate()
-		# cmap = mpl.colors.ListedColormap(list(pal))
+		
 		cmap = plt.cm.jet
 		bounds = np.linspace(min_all, max_all, 20)
 		norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 		
-		# fig, ax = plt.subplots()
-		# # testObs = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test, cmap=plt.cm.jet, vmin=min_all, vmax=max_all)
-		# testObs = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test, cmap=cmap, vmin=min_all, vmax=max_all)
-		# # plt.colorbar()
-		# for i, txt in enumerate(np.round(y_test, 1)):
-		#     ax.annotate(txt, (X_test[:, 0][i], X_test[:, 1][i]))
-		# plt.colorbar(testObs, ax = ax)
-		# plt.title('Out-of-sample test observations')
-		# plt.xlabel('Longitude')
-		# plt.ylabel('Latitude')
-		# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'TestObs.png')
-		# plt.show()
-		# plt.close()
 
 		#10/01/2019: creat cell coordinated of resoluton 10 by 10
 		cell_res = 10
@@ -897,77 +759,6 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 		centre_MoCoords = np.array([tmp[i][0] for i in range(len(X_tildZs))])
 		X_mo  = centre_MoCoords
 		
-		# X_mo = np.array(list(chain.from_iterable(X_tildZs))) # This line of code is for the case where only one point for X_tildZs
-		legend_elements = [Line2D([0], [0], marker='o', color='w', label='Observations', markerfacecolor=None, markeredgecolor='k', markersize=8),\
-			Line2D([0], [0], marker='s',color='w', markerfacecolor=None, markeredgecolor='k', markersize=8, label='Test points')] 
-
-		fig, ax = plt.subplots()
-		if indivError:
-			maxYtest = y_test[np.argsort(np.abs(residuals))[-3:]]
-		else:
-			y_testTmp = y_test[pivot]
-			maxYtest = y_testTmp[np.argsort(np.abs(residuals))[-3:]]
-		maxPlot = ax.scatter(max_coords[:, 0], max_coords[:, 1], c= maxYtest, cmap=cmap, norm =norm0, marker = 's')
-		# for i, txt in enumerate(np.round(maxYtest, 1)):
-		#     ax.annotate(txt, (max_coords[:, 0][i], max_coords[:, 1][i]))
-		trainObs = ax.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=cmap, norm =norm0)
-		# for i, txt in enumerate(np.round(y_train, 1)):
-		#     ax.annotate(txt, (X_train[:, 0][i], X_train[:, 1][i]))
-		# plt.colorbar(maxPlot, ax = ax)
-		# plt.savefig('SEED'+ str(SEED) + 'TrainObsAndTestMaxObs.png')
-		plt.colorbar(trainObs, ax = ax)
-		# plt.title('Observations & test points')
-		plt.xlabel('Longitude')
-		plt.ylabel('Latitude')
-		# plt.legend(loc='best')
-		ax.legend(handles=legend_elements, loc='best')
-
-		plt.savefig(output_folder + 'SEED'+ str(SEED) + 'TrainObs.png')
-		plt.show()
-		plt.close()
-
-		legend_elements = [Line2D([0], [0], marker='o', color='w', label='Model outputs', markerfacecolor=None, markeredgecolor='k', markersize=8), \
-			Line2D([0], [0], marker='s', color='w', markerfacecolor=None, markeredgecolor='k', markersize=8, label='Test points')] 
-
-		fig, ax = plt.subplots()
-		if indivError:
-			maxYtest = y_test[np.argsort(np.abs(residuals))[-3:]]
-		else:
-			y_testTmp = y_test[pivot]
-			maxYtest = y_testTmp[np.argsort(np.abs(residuals))[-3:]]
-		maxPlot = ax.scatter(max_coords[:, 0], max_coords[:, 1], c= maxYtest, cmap=cmap, norm =norm0, marker = 's')
-		# for i, txt in enumerate(np.round(maxYtest, 1)):
-		#     ax.annotate(txt, (max_coords[:, 0][i], max_coords[:, 1][i]))
-
-		modelOutputs = ax.scatter(X_mo[:, 0], X_mo[:, 1],  c = y_tildZs_withMean, cmap=cmap, norm = norm0)
-		# for i, txt in enumerate(np.round(y_tildZs, 1)):
-		#     ax.annotate(txt, (X_mo[:, 0][i], X_mo[:, 1][i]))
-
-		# plt.colorbar(maxPlot, ax = ax)
-		# plt.savefig('SEED'+ str(SEED) + 'Mo' + str(numMo) + 'andTestObsMax.png')
-		plt.colorbar(modelOutputs, ax = ax)
-		# plt.title('Model outputs & test points')
-		plt.xlabel('Longitude')  
-		plt.ylabel('Latitude')
-		ax.legend(handles=legend_elements, loc='best')
-		# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Mo' + str(numMo) + '.png')
-		plt.show()
-		plt.close()
-
-		# fig, ax = plt.subplots()
-		# maxPredic = mu_star[np.argsort(y_test)[-3:]]
-		# maxPlot = ax.scatter(max_coords[:, 0], max_coords[:, 1], c = maxPredic, cmap=plt.cm.jet, vmin=min_all, vmax=max_all, marker = 'x', s =150)
-		# for i, txt in enumerate(np.round(maxPredic, 1)):
-		#     ax.annotate(txt, (max_coords[:, 0][i], max_coords[:, 1][i]))
-
-		# ax.scatter(X_mo[:, 0], X_mo[:, 1],  c = y_tildZs, cmap=plt.cm.jet, vmin=min_all, vmax=max_all)
-		# for i, txt in enumerate(np.round(y_tildZs, 1)):
-		#     ax.annotate(txt, (X_mo[:, 0][i], X_mo[:, 1][i]))
-		# plt.colorbar(maxPlot, ax = ax)
-		# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Mo' + str(numMo) + 'andPredicMax.png')
-		# plt.show()
-		# plt.close()
-
 
 	upper_interval_rounded = np.round(upper_interv_predic, 1)
 	lower_interval_rounded = np.round(lower_interv_predic, 1)
@@ -996,62 +787,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 	lower_bound = np.array([-12., -6.5])
 	upper_bound = np.array([-3., 3.])
 	point_res = 100
-	# print 'len of mu_star is ' + str(len(mu_star))
-	# x1, x2 = np.meshgrid(np.linspace(lower_bound[0], upper_bound[0], point_res),  
-	#                      np.linspace(lower_bound[1], upper_bound[1], point_res))
-	# x1_vec = x1.ravel()
-	# x2_vec = x2.ravel()
-	# X_plot = np.vstack((x1_vec, x2_vec)).T
-
-	# nplot = X_plot.shape[0]
-	# K_star_star = np.zeros((nplot,1))
-	# K_star_hatZs = cov_mat_xy(X_train, X_plot, np.exp(log_sigma_Zs), np.exp(log_phi_Zs)) # is a matrix of size (n_train, n_plot)
-	# K_star_hatZs = K_star_hatZs.T
-	# _, avg_pointAreal_upper, _, _ = point_areal(X_plot, X_tildZs, log_sigma_Zs, log_phi_Zs, b)
-	# K_star_tildZs =avg_pointAreal_upper
-
-	# K_star = np.hstack((K_star_hatZs, K_star_tildZs))
-	# mu_plot = np.dot(K_star, u)
-
-	# fig = plt.figure()
-	# ax = Axes3D(fig)
-	# scat = ax.scatter(x1_vec, x2_vec, mu_plot, c=mu_plot, cmap='viridis', linewidth=0.5)
-	# ax.set_xlabel('$lon$')
-	# ax.set_ylabel('$lat$')
-	# ax.set_zlabel('$Z(s)$')
-	# fig.colorbar(scat, shrink=0.85)
-	# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'BM_predic_scat.png')
-	# plt.close()
-
-	# plt.figure()
-	# im = plt.imshow(np.flipud(mu_star.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap =plt.matplotlib.cm.jet)
-	# # plt.scatter(X_hatZs[:,0], X_hatZs[:,1], s=12, c='k', marker = 'o')
-	# print (mu_star.min(), mu_star.max())
-	# cb=plt.colorbar(im)
-	# cb.set_label('${Z(s)}$')
-	# # plt.title('min = %.2f , max = %.2f , avg = %.2f' % (mu_plot.min(), mu_plot.max(), mu_plot.mean()))
-	# plt.xlabel('$lon$')
-	# plt.ylabel('$lat$')
-	# plt.title('Prediction of BM')
-	# plt.grid()
-	# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'BM_predic_2D.png')
-	# plt.show()
-	# plt.close()
-
-
-	# fig = plt.figure()
-	# ax = Axes3D(fig)
-	# surf = ax.plot_surface(x1, x2, mu_plot.reshape(point_res, point_res), rstride=1, cstride=1, cmap='viridis')
-	# ax.set_xlabel('$lon$')
-	# ax.set_ylabel('$lat$')
-	# ax.set_zlabel('$Z(s)$')
-	# fig.colorbar(surf, shrink=0.85)
-	# ax = plt.gca()
-	# print('ylim is ' + str(ax.get_ylim()))
-	# print('xlim is ' + str(ax.get_xlim()))
-	# print('zlim is ' + str(ax.get_zlim()))
-	# plt.savefig(output_folder + 'SEED'+ str(SEED) + 'BM_predic_surf.png')
-	# plt.close()
+	
 
 	#*******************************comupute the prediction part for in-sample ntrain test data points under each theta **********************************************************
 	########## The following codes are for in-sample observations #################
@@ -1147,89 +883,14 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 			if marginZhat:
 				plt.savefig(output_folder + 'SEED'+ str(SEED) +'stdPredicErr_inSampleMarginZhat.png')
 			elif conditionZhat:                
-				plt.savefig(output_folder + 'SEED'+ str(SEED) +'PredErr_inSampConZhat_IndivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.png')    
+				plt.savefig(output_folder + 'SEED'+ str(SEED) +'PredErr_inSampConZhat_IndivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.eps')    
 			else:
 				plt.savefig(output_folder + 'SEED'+ str(SEED) +'PredErr_inSampConZhatZtilde_IndivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.png')
 			
 			plt.show()
 			plt.close()
 
-			lower_chol =  np.linalg.cholesky(cov_of_predic)
-			num_Outputs =  cov_of_predic.shape[0]
-			samples_yHat = []
-			for i in range(1000):
-				tmp = np.dot(lower_chol, np.random.normal(0., 1., num_Outputs))
-				tmp = np.dot(inv_G, tmp)
-				tmp = np.sort(tmp)
-				samples_yHat.append(tmp)
-			samples_yHat = np.array(samples_yHat)
-			print('shape of samples_yHat is ' + str(samples_yHat.shape))
-			Lqunatile = np.quantile(samples_yHat, 0.025, axis=0)
-			Uqunatile = np.quantile(samples_yHat, 0.975, axis=0)
 
-			std_norm_quantile = np.array([stats.norm.ppf((i-0.5)/num_Outputs) for i in range(1, num_Outputs+1)])
-
-			plt.figure
-			sm.qqplot(standardised_y_estimate, line='45')
-			# plt.savefig(output_folder + 'SEED'+ str(SEED) +'QQ_inSampConZhat_IndivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + 'NoCI.png')   
-			plt.show()
-			plt.close()
-
-			plt.figure()
-			# sm.qqplot(standardised_y_estimate, line='45')
-			plt.scatter(std_norm_quantile, np.sort(standardised_y_estimate),  marker = '.', color ='b', label='Truth')
-			plt.scatter(std_norm_quantile, Uqunatile, color = 'k', marker = '_', label='Upper_CI') 
-			plt.scatter(std_norm_quantile, Lqunatile, color = 'green', marker = '_', label='Lower_CI') 
-			plt.plot(std_norm_quantile, std_norm_quantile, color='r')
-			plt.xlabel('Theoretical Quantiles')
-			plt.ylabel('Sample Quantiles')
-			plt.legend(loc='best')
-			if marginZhat:
-				plt.savefig(output_folder + 'SEED'+ str(SEED) +'normalQQ_inSampleMarginZhat.png')
-			elif conditionZhat:
-				plt.savefig(output_folder + 'SEED'+ str(SEED) +'QQ_inSampConZhat_IndivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.png')   
-			else:
-				plt.savefig(output_folder + 'SEED'+ str(SEED) +'QQ_inSampConZhatZtilde_IndivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.png')
-			
-			plt.show()
-			plt.close()
-
-			# residuals = y_test - mu_star
-			residuals = standardised_y_estimate
-
-			max_coords = X_test[np.argsort(np.abs(residuals))[-3:], :]
-			print('max_coords of residuals is ' + str(max_coords))
-
-			maxAbs = np.array([np.abs(residuals.min()), np.abs(residuals.max())]).max()
-
-			fig, ax = plt.subplots()
-			cmap = mpl.colors.ListedColormap(["#00007F", "blue",'cyan', 'white', 'green', "red", "#7F0000"])
-			cmap.set_under("crimson")
-			cmap.set_over('black')
-			if maxAbs >4:
-				bounds = np.array([-np.ceil(maxAbs), -4, -2, -1, 1, 2, 4, np.ceil(maxAbs)])
-			else:
-				bounds = np.array([-np.ceil(maxAbs), -2, -1, 1, 2,  np.ceil(maxAbs)])
-				cmap = mpl.colors.ListedColormap(["blue", 'cyan', 'white', 'green',  "red"])
-			norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
-
-			# residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
-			if indivError:
-				residualsPlot = ax.scatter(X_test[:, 0], X_test[:, 1], c= standardised_y_estimate, cmap=cmap, norm=norm0)
-			else:
-				residualsPlot = ax.scatter(X_test[pivot, 0], X_test[pivot, 1], c= standardised_y_estimate, cmap=cmap, norm=norm0)
-			plt.xlabel('Longitude')
-			plt.ylabel('Latitude')
-			plt.title('Residuals of in-sample prediction')
-			plt.colorbar(residualsPlot, ax=ax)
-			if marginZhat:
-				plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) + '_insampleMarginZhat.png')
-			elif conditionZhat:   
-				plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) + '_insampleConditionZhatStd.png')
-			else:
-				plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) + '_insample.png')            
-			plt.show()
-			plt.close()
 	
 	if marginZhat:
 		pass
@@ -1363,86 +1024,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 		if marginZtilde:
 			plt.savefig(output_folder + 'SEED'+ str(SEED) + 'PreErr_inSampZtilde_indivErr' + str(indivError) + 'idx' + str(index_Xaxis) + '.png')
 		else:
-			plt.savefig(output_folder + 'SEED'+ str(SEED) + 'PreErr_inSampZtildeConZhat_indivErr' + str(indivError) + 'idx' + str(index_Xaxis) + '.png')
-		plt.show()
-		plt.close()
-
-		lower_chol =  np.linalg.cholesky(cov_of_predic)
-		num_Outputs =  cov_of_predic.shape[0]
-		samples_yTilde = []
-		for i in range(1000):
-			tmp = np.dot(lower_chol, np.random.normal(0., 1., num_Outputs))
-			tmp = np.dot(inv_G, tmp)
-			tmp = np.sort(tmp)
-			samples_yTilde.append(tmp)
-		samples_yTilde = np.array(samples_yTilde)
-		print('shape of samples_yTilde is ' + str(samples_yTilde.shape))
-		Lqunatile = np.quantile(samples_yTilde, 0.025, axis=0)
-		Uqunatile = np.quantile(samples_yTilde, 0.975, axis=0)
-
-		std_norm_quantile = np.array([stats.norm.ppf((i-0.5)/num_Outputs) for i in range(1, num_Outputs+1)])
-
-		plt.figure
-		sm.qqplot(standardised_y_estimate, line='45')
-		plt.savefig(output_folder + 'SEED'+ str(SEED) + 'QQ_inSampZtildeConZhat_indivErr' + str(indivError) + 'idx' + str(index_Xaxis) + 'NoCI.png')
-		plt.show()
-		plt.close()
-
-		plt.figure()
-		# sm.qqplot(standardised_y_estimate, line='45')
-		plt.scatter(std_norm_quantile, np.sort(standardised_y_estimate),  marker = '.', color ='b', label='Truth')
-		plt.scatter(std_norm_quantile, Uqunatile, color = 'k', marker = '_', label='Upper_CI') 
-		plt.scatter(std_norm_quantile, Lqunatile, color = 'green', marker = '_', label='Lower_CI')  
-		plt.plot(std_norm_quantile, std_norm_quantile, color='r')
-		plt.xlabel('Theoretical Quantiles')
-		plt.ylabel('Sample Quantiles')
-		plt.legend(loc='best')
-		if marginZtilde:
-			plt.savefig(output_folder + 'SEED'+ str(SEED) + 'QQ_inSampZtilde_indivErr' + str(indivError) + 'idx' + str(index_Xaxis) + '.png')
-		else:
-			plt.savefig(output_folder + 'SEED'+ str(SEED) + 'QQ_inSampZtildeConZhat_indivErr' + str(indivError) + 'idx' + str(index_Xaxis) + '.png')
-		plt.show()
-		plt.close()
-
-		# residuals = y_test - mu_star
-		residuals = standardised_y_estimate
-		tmp = X_tildZs - cell_coords 
-	
-		# get the center coordinates of X_tildZs(X_test in this case)
-		centre_MoCoords = np.array([tmp[i][0] for i in range(len(X_tildZs))])
-		X_mo  = centre_MoCoords
-
-		max_coords = X_mo[np.argsort(np.abs(residuals))[-3:], :]
-		print('max_coords of residuals is ' + str(max_coords))
-
-		maxAbs = np.array([np.abs(residuals.min()), np.abs(residuals.max())]).max()
-		print('maxAbs is' + str(maxAbs))
-
-		fig, ax = plt.subplots()
-		cmap = mpl.colors.ListedColormap(["#00007F", "blue",'cyan', 'white', 'green', "red", "#7F0000"])
-		cmap.set_under("crimson")
-		cmap.set_over('black')
-
-		if maxAbs >4:
-			bounds = np.array([-np.ceil(maxAbs), -4, -2, -1, 1, 2, 4, np.ceil(maxAbs)])
-		else:
-			 bounds = np.array([-np.ceil(maxAbs), -2, -1, 1, 2,  np.ceil(maxAbs)])
-			 cmap = mpl.colors.ListedColormap(["blue", 'cyan', 'white', 'green',  "red"])
-		norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
-
-		# residualsPlot = ax.scatter(X_mo[:, 0], X_mo[:, 1], c= y_test - mu_star, cmap=cmap, vmin = -maxAbs, vmax = maxAbs)
-		if indivError:
-			residualsPlot = ax.scatter(X_mo[:, 0], X_mo[:, 1], c= standardised_y_estimate, cmap=cmap, norm = norm0)
-		else:
-			residualsPlot = ax.scatter(X_mo[pivot, 0], X_mo[pivot, 1], c= standardised_y_estimate, cmap=cmap, norm=norm0)
-		plt.xlabel('Longitude')
-		plt.ylabel('Latitude')
-		plt.title('Residuals of in-sample prediction')
-		plt.colorbar(residualsPlot, ax=ax)
-		if marginZtilde:
-			plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) + '_insampleYtildZs.png')
-		else:
-			plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) + '_insampleYtildZsConStd.png')
+			plt.savefig(output_folder + 'SEED'+ str(SEED) + 'PreErr_inSampZtildeConZhat_indivErr' + str(indivError) + 'idx' + str(index_Xaxis) + '.eps')
 		plt.show()
 		plt.close()
 

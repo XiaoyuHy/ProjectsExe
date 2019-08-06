@@ -158,7 +158,7 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	plt.xlabel('$Longitude$')
 	plt.ylabel('$Latitude$')
 	# plt.grid()
-	plt.savefig('d2_Zs_res' + str(point_res)  + 'SEED' + str(SEED)  + '.png')
+	plt.savefig('d2_Zs_res' + str(point_res)  + 'SEED' + str(SEED)  + '.eps')
 	plt.show()
 	plt.close()
 	
@@ -193,7 +193,7 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	plt.xlabel('$Longitude$')
 	plt.ylabel('$Latitude$')
 	# plt.grid()
-	plt.savefig('d2_predicZs_res' + str(point_res)  + 'SEED' + str(SEED)  + 'numMo_' + str(num_tildZs) +  '.png')
+	plt.savefig('d2_predicZs_res' + str(point_res)  + 'SEED' + str(SEED)  + 'numMo_' + str(num_tildZs) +  '.eps')
 	plt.show()
 	plt.close()
 	
@@ -279,7 +279,7 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	plt.xlabel('$Longitude$')
 	plt.ylabel('$Latitude$')
 	# plt.grid()
-	plt.savefig('d2_tildZs_res' + str(areal_res)  + 'SEED' + str(SEED) + '.png')
+	plt.savefig('d2_tildZs_res' + str(areal_res)  + 'SEED' + str(SEED) + '.eps')
 	plt.show()
 	plt.close()
 
@@ -380,7 +380,7 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	plt.scatter(areal_Zs_tmp0 + mean_Zs, y_tildZs + mean_Zs, marker = '^', color ='b', label = "Z(s) versus $X(A_i)$")
 	plt.legend(loc='best')
 	plt.title('(d)')
-	plt.savefig('Zs_Ys_XAi_SEED' + str(SEED) + '_numMo' + str(numMO[-1]) + '.png')
+	plt.savefig('Zs_Ys_XAi_SEED' + str(SEED) + '_numMo' + str(numMO[-1]) + '.eps')
 	plt.show()
 	plt.close()
 	
@@ -422,7 +422,7 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	# plt.colorbar(im1, ax=axs, orientation = 'horizontal')
 	plt.colorbar(im1, cax= cax, ax=[ax1,ax2, ax3], use_gridspec = True)
 	plt.subplots_adjust(wspace=0.2, hspace=0)
-	plt.savefig('simPlots_' + 'SEED' + str(SEED) + '3.png')
+	plt.savefig('simPlots_' + 'SEED' + str(SEED) + '3.eps')
 	plt.show()
 	plt.close()
 	exit(-1)

@@ -515,7 +515,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         plt.axhline(-2, color='black', lw=1.2, ls =':')
         
         plt.ylabel('Standardised residual')
-        plt.savefig(output_folder + 'SEED'+ str(SEED) +'OutSamp_indivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.png')
+        plt.savefig(output_folder + 'SEED'+ str(SEED) +'OutSamp_indivErr' + str(indivError) + 'Idx' + str(index_Xaxis) + '.eps')
         # plt.show()
         plt.close()
 
@@ -582,7 +582,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         eb[-1][0].set_linestyle(':')
         plt.xlabel('Observations')
         plt.ylabel('Predictions')
-        # plt.savefig(output_folder + 'BM_predic_scatter_seed' + str(SEED)+ 'numMo' + str(numMo) + 'mean.png')
+        plt.savefig(output_folder + 'BM_predic_scatter_seed' + str(SEED)+ 'numMo' + str(numMo) + 'mean.eps')
         plt.show()
         plt.close()
       
@@ -645,7 +645,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         # plt.title('Residuals of out-of-sample prediction')
         plt.colorbar(residualsPlot, ax=ax)
         plt.plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
-        plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) +  '_outSampleStd.png')
+        plt.savefig(output_folder + 'Residuals_seed' + str(SEED) + 'numMo' + str(numMo) + 'IndivErr' + str(indivError) +  '_outSampleStd.eps')
         plt.show()
         plt.close()
      
@@ -726,7 +726,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         axs[1].set_title('(b)')
         ax[1].legend(handles=legend_elements, loc='best')
         plt.colorbar(modelOutputs, ax=ax.ravel().tolist())
-        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'Obs&Mo' + str(numMo) + '.png')
+        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'ObsMo' + str(numMo) + '.eps')
         plt.show()
         plt.close()
 
