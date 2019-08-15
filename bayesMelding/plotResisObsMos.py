@@ -678,11 +678,12 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         X_mo  = centre_MoCoords
 
         Nr = 1
-        Nc = 2
-        fig, ax = plt.subplots(Nr, Nc, constrained_layout= True, sharex=True, sharey=True, figsize=(10,5))
-        axs = ax.flat
-        
-        # X_mo = np.array(list(chain.from_iterable(X_tildZs))) # This line of code is for the case where only one point for X_tildZs
+        Nc = 3
+        fig, (ax1, ax2,cax) = plt.subplots(Nr, Nc, figsize=(12,5), gridspec_kw={"width_ratios":[1, 1, 0.06]})
+        fig.set_rasterized(True)
+        ax1.set_rasterized(True)
+        ax2.set_rasterized(True)
+
         legend_elements = [Line2D([0], [0], marker='o', color='w', label='Observations', markerfacecolor=None, markeredgecolor='k', markersize=8),\
             Line2D([0], [0], marker='s', color='w', markerfacecolor=None, markeredgecolor='k', markersize=8, label='Test points')] 
 
@@ -691,21 +692,14 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         else:
             y_testTmp = y_test_withMean[pivot]
             maxYtest = y_testTmp[np.argsort(np.abs(residuals))[-3:]]
-        maxPlot = ax[0].scatter(max_coords[:, 0], max_coords[:, 1], c= maxYtest, cmap=cmap, norm =norm0, marker = 's')
-        # for i, txt in enumerate(np.round(maxYtest, 1)):
-        #     ax.annotate(txt, (max_coords[:, 0][i], max_coords[:, 1][i]))
-        trainObs = ax[0].scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=cmap, norm =norm0)
-        ax[0].plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
-        # for i, txt in enumerate(np.round(y_train, 1)):
-        #     ax.annotate(txt, (X_train[:, 0][i], X_train[:, 1][i]))
-        # plt.colorbar(maxPlot, ax = ax)
-        # plt.savefig('SEED'+ str(SEED) + 'TrainObsAndTestMaxObs.png')
-        # plt.colorbar(trainObs, ax = ax)
-        # plt.title('Observations & test points')
-        axs[0].set_xlabel('$Longitude$')
-        axs[0].set_ylabel('$Latitude$')
-        axs[0].set_title('(a)')
-        ax[0].legend(handles=legend_elements, loc='best')
+        maxPlot = ax1.scatter(max_coords[:, 0], max_coords[:, 1], c= maxYtest, cmap=cmap, norm =norm0, marker = 's')
+        trainObs = ax1.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=cmap, norm =norm0)
+        ax1.plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
+       
+        ax1.set_xlabel('$Longitude$')
+        ax1.set_ylabel('$Latitude$')
+        ax1.set_title('(a)')
+        ax1.legend(handles=legend_elements, loc='best')
 
         legend_elements = [Line2D([0], [0], marker='o', color='w', label='Model outputs', markerfacecolor=None, markeredgecolor='k', markersize=8), \
             Line2D([0], [0], marker='s', color='w', markerfacecolor=None, markeredgecolor='k', markersize=8, label='Test points')] 
@@ -715,20 +709,71 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         else:
             y_testTmp = y_test_withMean[pivot]
             maxYtest = y_testTmp[np.argsort(np.abs(residuals))[-3:]]
-        maxPlot = ax[1].scatter(max_coords[:, 0], max_coords[:, 1], c= maxYtest, cmap=cmap, norm =norm0, marker = 's')
-        # for i, txt in enumerate(np.round(maxYtest, 1)):
-        #     ax.annotate(txt, (max_coords[:, 0][i], max_coords[:, 1][i]))
+        maxPlot = ax2.scatter(max_coords[:, 0], max_coords[:, 1], c= maxYtest, cmap=cmap, norm =norm0, marker = 's')
+        modelOutputs = ax2.scatter(X_mo[:, 0], X_mo[:, 1],  c = y_tildZs_withMean, cmap=cmap, norm = norm0)
+        ax2.plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
+        ax2.set_xlabel('$Longitude$')
+        ax2.set_ylabel('$Latitude$')
+        ax2.set_title('(b)')
+        ax2.legend(handles=legend_elements, loc='best')
 
-        modelOutputs = ax[1].scatter(X_mo[:, 0], X_mo[:, 1],  c = y_tildZs_withMean, cmap=cmap, norm = norm0)
-        ax[1].plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
-        axs[1].set_xlabel('$Longitude$')
-        axs[1].set_ylabel('$Latitude$')
-        axs[1].set_title('(b)')
-        ax[1].legend(handles=legend_elements, loc='best')
-        plt.colorbar(modelOutputs, ax=ax.ravel().tolist())
-        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'ObsMo' + str(numMo) + '.eps')
+        plt.colorbar(modelOutputs, cax= cax, ax=[ax1,ax2], use_gridspec = True)
+        plt.savefig(output_folder + 'SEED'+ str(SEED) + 'ObsMo' + str(numMo) + '.eps', rasterized=True)
         plt.show()
         plt.close()
+
+        # Nr = 1
+        # Nc = 2
+        # fig, ax = plt.subplots(Nr, Nc, constrained_layout= True, sharex=True, sharey=True, figsize=(10,5))
+        # axs = ax.flat
+        
+        # # X_mo = np.array(list(chain.from_iterable(X_tildZs))) # This line of code is for the case where only one point for X_tildZs
+        # legend_elements = [Line2D([0], [0], marker='o', color='w', label='Observations', markerfacecolor=None, markeredgecolor='k', markersize=8),\
+        #     Line2D([0], [0], marker='s', color='w', markerfacecolor=None, markeredgecolor='k', markersize=8, label='Test points')] 
+
+        # if indivError:
+        #     maxYtest = y_test_withMean[np.argsort(np.abs(residuals))[-3:]]
+        # else:
+        #     y_testTmp = y_test_withMean[pivot]
+        #     maxYtest = y_testTmp[np.argsort(np.abs(residuals))[-3:]]
+        # maxPlot = ax[0].scatter(max_coords[:, 0], max_coords[:, 1], c= maxYtest, cmap=cmap, norm =norm0, marker = 's')
+        # # for i, txt in enumerate(np.round(maxYtest, 1)):
+        # #     ax.annotate(txt, (max_coords[:, 0][i], max_coords[:, 1][i]))
+        # trainObs = ax[0].scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=cmap, norm =norm0)
+        # ax[0].plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
+        # # for i, txt in enumerate(np.round(y_train, 1)):
+        # #     ax.annotate(txt, (X_train[:, 0][i], X_train[:, 1][i]))
+        # # plt.colorbar(maxPlot, ax = ax)
+        # # plt.savefig('SEED'+ str(SEED) + 'TrainObsAndTestMaxObs.png')
+        # # plt.colorbar(trainObs, ax = ax)
+        # # plt.title('Observations & test points')
+        # axs[0].set_xlabel('$Longitude$')
+        # axs[0].set_ylabel('$Latitude$')
+        # axs[0].set_title('(a)')
+        # ax[0].legend(handles=legend_elements, loc='best')
+
+        # legend_elements = [Line2D([0], [0], marker='o', color='w', label='Model outputs', markerfacecolor=None, markeredgecolor='k', markersize=8), \
+        #     Line2D([0], [0], marker='s', color='w', markerfacecolor=None, markeredgecolor='k', markersize=8, label='Test points')] 
+
+        # if indivError:
+        #     maxYtest = y_test_withMean[np.argsort(np.abs(residuals))[-3:]]
+        # else:
+        #     y_testTmp = y_test_withMean[pivot]
+        #     maxYtest = y_testTmp[np.argsort(np.abs(residuals))[-3:]]
+        # maxPlot = ax[1].scatter(max_coords[:, 0], max_coords[:, 1], c= maxYtest, cmap=cmap, norm =norm0, marker = 's')
+        # # for i, txt in enumerate(np.round(maxYtest, 1)):
+        # #     ax.annotate(txt, (max_coords[:, 0][i], max_coords[:, 1][i]))
+
+        # modelOutputs = ax[1].scatter(X_mo[:, 0], X_mo[:, 1],  c = y_tildZs_withMean, cmap=cmap, norm = norm0)
+        # ax[1].plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
+        # axs[1].set_xlabel('$Longitude$')
+        # axs[1].set_ylabel('$Latitude$')
+        # axs[1].set_title('(b)')
+        # ax[1].legend(handles=legend_elements, loc='best')
+        # plt.colorbar(modelOutputs, ax=ax.ravel().tolist())
+        # plt.savefig(output_folder + 'SEED'+ str(SEED) + 'ObsMo' + str(numMo) + '.eps')
+        # plt.show()
+        # plt.close()
 
     upper_interval_rounded = np.round(upper_interv_predic, 1)
     lower_interval_rounded = np.round(lower_interv_predic, 1)
