@@ -492,7 +492,8 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             x_plot =  np.linspace(-11.7, -3.21, 500)
             y_plot = np.linspace(-6.2, 3.0, 500)
             interpolated = ama.interp(X_test[:, 0], X_test[:, 1], y_test, xo=x_plot, yo=y_plot)
-
+            
+            
             as_vector = r['as.vector']
 
             z = np.array(as_vector(interpolated.rx2('z')))
@@ -518,7 +519,44 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             z[~is_france] = np.nan
             z_mos = z
             z1= r.matrix(z, 500, 500)
-          
+
+            interpo_data = np.zeros(500000).reshape(250000, 2)
+            interpo_data[:, 0] = np.array(xy.rx(True,1))
+            interpo_data[:, 1] = np.array(xy.rx(True,2))
+
+            moNearObs = []
+            for i in range(len(y_train_withMean)):
+                idx_min_dist = np.argmin(np.array([np.linalg.norm(X_train[i, :] - interpo_data[j, :]) for j in range(len(z_mos))]))
+                moNearObs.append(z_mos[idx_min_dist])
+            moNearObs = np.array(moNearObs)
+
+            plt.figure()
+            plt.scatter(y_train_withMean, moNearObs, color='k')
+            plt.plot(y_train_withMean, y_train_withMean, color='k')
+            plt.xlabel('Observations')
+            plt.ylabel('Model outputs')
+            plt.savefig("obsVsMos.eps")
+            plt.savefig("obsVsMos.png")
+            plt.show()
+            plt.close()
+
+
+            # moNearObs1 = []
+            # for i in range(len(y_train_withMean)):
+            #     idx_min_dist = np.argmin(np.array([np.linalg.norm(X_train[i, :] - X_test[j, :]) for j in range(len(y_test))]))
+            #     moNearObs1.append(y_test[idx_min_dist])
+            # moNearObs1 = np.array(moNearObs1)
+
+            # plt.figure()
+            # plt.scatter(y_train_withMean, moNearObs1, color='k')
+            # plt.plot(y_train_withMean, y_train_withMean, color='k')
+            # plt.xlabel('Observations')
+            # plt.ylabel('Model outputs')
+            # plt.savefig("obsVsMos1.eps")
+            # plt.savefig("obsVsMos1.png") 
+            # plt.show()
+            # plt.close()
+                     
             d1 = {'x':interpolated.rx2('x'), 'y':interpolated.rx2('y'), 'z':z1}
             d2 = ro.ListVector(d1)
            
@@ -561,6 +599,23 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             z_predicMos = z
             z1= r.matrix(z, 500, 500)
             print(r.dim(interpolated.rx2('z')))
+
+            interpo_xy = np.array(xy)
+            moNearObs2 = []
+            for i in range(len(y_train_withMean)):
+                idx_min_dist = np.argmin(np.array([np.linalg.norm(X_train[i, :] - interpo_xy[j, :]) for j in range(len(z_predicMos))]))
+                moNearObs2.append(z_predicMos[idx_min_dist])
+            moNearObs2 = np.array(moNearObs2)
+
+            plt.figure()
+            plt.scatter(y_train_withMean, moNearObs2, color='k')
+            plt.plot(y_train_withMean, y_train_withMean, color='k')
+            plt.xlabel('Observations')
+            plt.ylabel('Predicted model outputs')
+            plt.savefig("obsVsPreMos.eps")
+            plt.savefig("obsVsPreMos.png") 
+            plt.show()
+            plt.close()
 
             d1 = {'x':interpolated.rx2('x'), 'y':interpolated.rx2('y'), 'z':z1}
             d2 = ro.ListVector(d1)
