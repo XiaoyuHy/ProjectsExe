@@ -353,7 +353,9 @@ def resGridDataFusionVsKrig(numMo):
 	cmap0 = cmap.from_list('Custom cmap', cmaplist, cmap.N)
 
 	# define the bins and normalize
-	bounds = np.round(np.linspace(0, np.ceil(rmse_krig_outSample.max()), 20),0)
+	# bounds = np.round(np.linspace(0, np.ceil(rmse_krig_outSample.max()), 20),0)
+	# bounds = np.array([0,3,6,9,12,15,18,21, 24])
+	bounds = np.arange(0,24)
 	norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
 
@@ -376,7 +378,9 @@ def resGridDataFusionVsKrig(numMo):
 	print(avgVar_krig_outSample)
 
 
-	bounds = np.round(np.linspace(6.0, np.ceil(avgVar_krig_outSample.max()),20), 1)
+	bounds = np.linspace(6.0, np.ceil(avgVar_krig_outSample.max()), 51)
+
+
 	norm1 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
 	plt.figure()
@@ -400,7 +404,8 @@ def resGridDataFusionVsKrig(numMo):
 	print ('median predicAccuracy_krig_outSample is ' + str(np.median(predicAccuracy_krig_outSample)))
 
 
-	bounds = np.round(np.linspace(0.8, 1.0, 20), 2)
+	bounds = np.linspace(0.8, 1.0, 21)
+	
 	norm2 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
 	plt.figure()
@@ -564,8 +569,8 @@ if __name__ == '__main__':
 	p.add_argument('-useSimData', dest='useSimData', default=True,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether to use simulated data')
 	p.add_argument('-numMo', type=int, dest='numMo', default=300, help='Number of model outputs used in modelling')
 	args = p.parse_args()
-	# resGridDataFusionVsKrig(args.numMo)
-	plot(args.useSimData)
+	resGridDataFusionVsKrig(args.numMo)
+	# plot(args.useSimData)
 
 
 

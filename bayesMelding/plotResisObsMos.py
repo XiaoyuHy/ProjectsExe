@@ -651,7 +651,8 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
      
   
         cmap = plt.cm.jet
-        bounds = np.round(np.linspace(min_all, max_all, 20), 0)
+        # bounds = np.round(np.linspace(min_all, max_all, 20), 0)
+        bounds = np.arange(np.round(min_all, 0), np.round(max_all, 0) + 1)
         norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
         #10/01/2019: creat cell coordinated of resoluton 10 by 10
