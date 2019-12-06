@@ -432,7 +432,6 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         meanPredic_out.close()
 
     if not useSimData:
-        # input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128/seed' + str(SEED) + '/'
         input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128/seed' + str(SEED) + '/'
         mean_y_hatZs_in = open(input_folder + 'mean.pickle', 'rb')
         mean_y_hatZs = pickle.load(mean_y_hatZs_in) 
@@ -442,21 +441,10 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
         # mu_star = pickle.load(mu_star_in)
     
     if not useSimData:
-        # input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128/seed' + str(SEED) + '/'
-        # mean_y_hatZs_in = open(input_folder + 'mean.pickle', 'rb')
-        # mean_y_hatZs = pickle.load(mean_y_hatZs_in) 
-
         y_test = y_test + mean_y_hatZs
         y_train_withMean = y_train + mean_y_hatZs
         y_tildZs_withMean = y_tildZs + mean_y_hatZs
         mu_star = mu_star + mean_y_hatZs
-        # upper_interv_predic = upper_interv_predic + mean_y_hatZs
-        # lower_interv_predic = lower_interv_predic + mean_y_hatZs
-
-        # print('maximum of y_test is ' + str(y_test.max()))
-        # print('maximum of y_tildZs is ' + str(y_tildZs.max()))
-        # print('minimum of y_test is ' + str(y_test.min()))
-        # print('minimum of y_tildZs is ' + str(y_tildZs.min()))
 
         max_all = np.array([y_test.max(), y_train_withMean.max(), y_tildZs_withMean.max()]).max()
         print('max_all is ' + str(max_all))
@@ -524,21 +512,21 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             interpo_data[:, 0] = np.array(xy.rx(True,1))
             interpo_data[:, 1] = np.array(xy.rx(True,2))
 
-            moNearObs = []
-            for i in range(len(y_train_withMean)):
-                idx_min_dist = np.argmin(np.array([np.linalg.norm(X_train[i, :] - interpo_data[j, :]) for j in range(len(z_mos))]))
-                moNearObs.append(z_mos[idx_min_dist])
-            moNearObs = np.array(moNearObs)
+            # moNearObs = []
+            # for i in range(len(y_train_withMean)):
+            #     idx_min_dist = np.argmin(np.array([np.linalg.norm(X_train[i, :] - interpo_data[j, :]) for j in range(len(z_mos))]))
+            #     moNearObs.append(z_mos[idx_min_dist])
+            # moNearObs = np.array(moNearObs)
 
-            plt.figure()
-            plt.scatter(y_train_withMean, moNearObs, color='k')
-            plt.plot(y_train_withMean, y_train_withMean, color='k')
-            plt.xlabel('Observations')
-            plt.ylabel('Model outputs')
-            plt.savefig("obsVsMos.eps")
-            plt.savefig("obsVsMos.png")
+            # plt.figure()
+            # plt.scatter(y_train_withMean, moNearObs, color='k')
+            # plt.plot(y_train_withMean, y_train_withMean, color='k')
+            # plt.xlabel('Observations')
+            # plt.ylabel('Model outputs')
+            # plt.savefig("obsVsMos.eps")
+            # plt.savefig("obsVsMos.png")
             # plt.show()
-            plt.close()
+            # plt.close()
 
 
             # moNearObs1 = []
@@ -600,22 +588,22 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             z1= r.matrix(z, 500, 500)
             print(r.dim(interpolated.rx2('z')))
 
-            interpo_xy = np.array(xy)
-            moNearObs2 = []
-            for i in range(len(y_train_withMean)):
-                idx_min_dist = np.argmin(np.array([np.linalg.norm(X_train[i, :] - interpo_xy[j, :]) for j in range(len(z_predicMos))]))
-                moNearObs2.append(z_predicMos[idx_min_dist])
-            moNearObs2 = np.array(moNearObs2)
+            # interpo_xy = np.array(xy)
+            # moNearObs2 = []
+            # for i in range(len(y_train_withMean)):
+            #     idx_min_dist = np.argmin(np.array([np.linalg.norm(X_train[i, :] - interpo_xy[j, :]) for j in range(len(z_predicMos))]))
+            #     moNearObs2.append(z_predicMos[idx_min_dist])
+            # moNearObs2 = np.array(moNearObs2)
 
-            plt.figure()
-            plt.scatter(y_train_withMean, moNearObs2, color='k')
-            plt.plot(y_train_withMean, y_train_withMean, color='k')
-            plt.xlabel('Observations')
-            plt.ylabel('Predicted model outputs')
-            plt.savefig("obsVsPreMos.eps")
-            plt.savefig("obsVsPreMos.png") 
-            # plt.show()
-            plt.close()
+            # plt.figure()
+            # plt.scatter(y_train_withMean, moNearObs2, color='k')
+            # plt.plot(y_train_withMean, y_train_withMean, color='k')
+            # plt.xlabel('Observations')
+            # plt.ylabel('Predicted model outputs')
+            # plt.savefig("obsVsPreMos.eps")
+            # plt.savefig("obsVsPreMos.png") 
+            # # plt.show()
+            # plt.close()
 
             d1 = {'x':interpolated.rx2('x'), 'y':interpolated.rx2('y'), 'z':z1}
             d2 = ro.ListVector(d1)
@@ -641,19 +629,19 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             bounds = np.arange(6,43)
             norm0 = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
-            fig = plt.figure()
-            fig.set_rasterized(True)
-            ax = fig.add_subplot(111)
-            ax.set_rasterized(True)
-            im=ax.imshow(np.flipud(np.array(z_mos).reshape((500, 500))), extent=(-11.7, -3.21, -6.2, 3.0), cmap  =cmap, norm = norm0)
-            plt.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=cmap, norm= norm0, edgecolors='k')
-            plt.plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
-            plt.xlabel('$Longitude$')
-            plt.ylabel('$Latitude$')
-            plt.colorbar(im)
-            plt.savefig("SEED120TrainObsAndAllTrainMo500_v2.eps",rasterized=True)
-            # plt.show()
-            plt.close()
+            # fig = plt.figure()
+            # fig.set_rasterized(True)
+            # ax = fig.add_subplot(111)
+            # ax.set_rasterized(True)
+            # im=ax.imshow(np.flipud(np.array(z_mos).reshape((500, 500))), extent=(-11.7, -3.21, -6.2, 3.0), cmap  =cmap, norm = norm0)
+            # plt.scatter(X_train[:, 0], X_train[:, 1], c= y_train_withMean, cmap=cmap, norm= norm0, edgecolors='k')
+            # plt.plot(france_rcoords[:,0], france_rcoords[:,1], '-', color='k', lw=0.5)
+            # plt.xlabel('$Longitude$')
+            # plt.ylabel('$Latitude$')
+            # plt.colorbar(im)
+            # plt.savefig("SEED120TrainObsAndAllTrainMo500_v2.eps",rasterized=True)
+            # # plt.show()
+            # plt.close()
           
 
 
