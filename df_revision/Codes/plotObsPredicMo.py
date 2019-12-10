@@ -806,6 +806,7 @@ if __name__ == '__main__':
             y_test = all_y_Zs
             # elev_fp = all_elev_fp
             print('shape of X_test, y_test when predicMo is true ' + str((X_test.shape,y_test.shape)))
+            exit(-1)
 
         else:
             X_train = X_hatZs[:-28, :]

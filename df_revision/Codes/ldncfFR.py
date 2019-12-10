@@ -144,8 +144,8 @@ def loadNetCdf(SEED=260, num_hatZs=128, num_tildZs = 150, crossValFlag=False, ze
 		all_y_Zs_out.close()
 
 
-	numMO = np.array([50, 100, 150, 200, 250, 300, 350, 400, 450, 500])
-	# numMO = np.array([50])
+	# numMO = np.array([50, 100, 150, 200, 250, 300, 350, 400, 450, 500])
+	numMO = np.array([50])
 
 	modelOutputX = []
 	modelOutputy = []
@@ -186,6 +186,7 @@ def loadNetCdf(SEED=260, num_hatZs=128, num_tildZs = 150, crossValFlag=False, ze
 		# The following line creats 10*10 points of coordinates for one model output
 		X_tildZs = np.array([X_tildZs_tmp[i] + cell_coords for i in range(X_tildZs_tmp.shape[0])] + modelOutputX)
 		print('shape of X_tildZs is ' + str(X_tildZs.shape))
+		exit(-1)
 		
 		y_tildZs = np.array(list(dataMo_within_squareAround_FR[mask, 3]) + modelOutputy)
 		elev_fp = np.array(list(dataMo_within_squareAround_FR[mask, 2]) + elev_fp_Output)
