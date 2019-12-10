@@ -31,8 +31,8 @@ N <- nx * ny
 for (SEED in 204:204){
 set.seed(SEED)
 #mod <- RMgauss(var=1, scale=0.2)
-scale_par = 0.2
-alpha_par = 1.5
+scale_par = 1.0
+alpha_par = 1.8
 mod <- RMstable(alpha =alpha_par,var=1, scale=scale_par)
 Y3 <- RFsimulate(mod, x=x, y=y, spConform=FALSE)
 rfSimData =  as.vector(as.matrix(Y3))

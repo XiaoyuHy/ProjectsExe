@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import random
 from rpy2.robjects import r
+import matplotlib as mpl
+import matplotlib.colors
 # from mpl_toolkits.mplot3d import Axes3D
 
 def plot_predic_Zs_sim(point_res =1000, SEED = 204, numMo = 50):
@@ -141,19 +143,23 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	gamma_density = stats.gamma.pdf(x, alpha, loc, scale)
 
 
-	fig, ax = plt.subplots(figsize=(10, 6))
-	ax.hist(all_y_Zs, bins=30, normed=True)
-	ax.plot(x, nparam_density, 'r-', label='non-parametric density (smoothed by Gaussian kernel)')
-	ax.plot(x, param_density, 'k--', label='parametric density')
-	ax.plot(x, gamma_density, 'g-', label='gamma density')
-	# ax.set_ylim([0, 0.15])
-	ax.legend(loc='best')
-	# plt.savefig(output_folder + 'gammaTransformedWithMean.png')
-	plt.show()
-	plt.close()
+	# fig, ax = plt.subplots(figsize=(10, 6))
+	# ax.hist(all_y_Zs, bins=30, normed=True)
+	# ax.plot(x, nparam_density, 'r-', label='non-parametric density (smoothed by Gaussian kernel)')
+	# ax.plot(x, param_density, 'k--', label='parametric density')
+	# ax.plot(x, gamma_density, 'g-', label='gamma density')
+	# # ax.set_ylim([0, 0.15])
+	# ax.legend(loc='best')
+	# # plt.savefig(output_folder + 'gammaTransformedWithMean.png')
+	# plt.show()
+	# plt.close()
+	
+	cmap = plt.matplotlib.cm.jet
+	bounds = np.ceil(np.linspace(all_y_Zs.min(), all_y_Zs.max(), 19))
+	norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
 	plt.figure()
-	im1 = plt.imshow(np.flipud(all_y_Zs.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap = plt.matplotlib.cm.jet)
+	im1 = plt.imshow(np.flipud(all_y_Zs.reshape((point_res,point_res))), extent=(lower_bound[0], upper_bound[0],lower_bound[1], upper_bound[1]), cmap = cmap, norm = norm)
 	# plt.scatter(X_hatZs[:,0], X_hatZs[:,1], s=12, c='k', marker = 'o')
 	cb=plt.colorbar(im1)
 	cb.set_label('${Z(s)}$')
