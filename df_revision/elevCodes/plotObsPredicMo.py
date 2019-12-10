@@ -321,7 +321,7 @@ def log_py_giv_par(theta, X, y, OMEGA = 1e-6):
 
     return log_like
 
-def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, elev_fp, crossValFlag = False,  SEED=None, numMo = None, useSimData =False, grid= False, \
+def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, crossValFlag = False,  SEED=None, numMo = None, useSimData =False, grid= False, \
     predicMo = False, a_bias_poly_deg = 5, indivError = True, index_Xaxis =True, conditionZhat = True,  marginZtilde=False, conZhatZtilde= False, marginZhat=False, \
     gp_deltas_modelOut = True, withPrior= False, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
@@ -375,18 +375,20 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 
     mu_train = np.zeros(len(y_train))
 
+    elev_fp = np.array([X_tildZs[i][0, 2] for i in range(len(y_tildZs))])
+
     if a_bias_poly_deg ==2:
-        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i][:,:2], axis=0) for i in range(len(y_tildZs))])
         n_row = X_tildZs_mean.shape[0]
         tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
         X_tildZs_mean_extend = np.hstack((elev_fp.reshape(len(elev_fp),1), X_tildZs_mean, tmp0))
         mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
     else:
-        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i][:, :2], axis=0) for i in range(len(y_tildZs))])
         n_row = X_tildZs_mean.shape[0]
         tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
         X_tildZs_mean_extend0 = np.hstack((X_tildZs_mean, tmp0))
-        tmp1 = np.array([X_tildZs[i]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
+        tmp1 = np.array([X_tildZs[i][:, :2]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
         tmp1 = np.array([np.mean(tmp1[i], axis =0) for i in range(len(y_tildZs))])
         tmp2 = np.array([X_tildZs[i][:,0] * X_tildZs[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
         tmp2 = np.array([np.mean(tmp2[i]) for i in range(len(y_tildZs))])
@@ -701,8 +703,6 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
             plt.close()
 
 
-
-
 if __name__ == '__main__':
     computeN3Cost.init(0)
     p = argparse.ArgumentParser()
@@ -729,9 +729,6 @@ if __name__ == '__main__':
 
     X_hatZs_in = open(input_folder + 'X_hatZs.pkl', 'rb')
     X_hatZs = pickle.load(X_hatZs_in) 
-
-    elev_fp_in = open(input_folder + 'elev_fp.pkl', 'rb')
-    elev_fp = pickle.load(elev_fp_in) 
  
     y_hatZs_in = open(input_folder + 'y_hatZs.pkl', 'rb')
     y_hatZs = pickle.load(y_hatZs_in) 
@@ -793,21 +790,15 @@ if __name__ == '__main__':
 
             # input_folder = os.getcwd() + '/DataImogenFrGridMoNotCentre/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
             input_folder = os.getcwd() + '/Data/FPstart2016020612_FR_numObs_128/seed' + str(args.SEED) + '/'
-            all_X_Zs_temp_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
-            all_X_Zs_temp = pickle.load(all_X_Zs_temp_in) 
-
-            all_X_Zs = all_X_Zs_temp[:, :2]
-            all_elev_fp  = all_X_Zs_temp[:, 2]
+            all_X_Zs_in = open(input_folder + 'all_X_Zs.pickle', 'rb')
+            all_X_Zs = pickle.load(all_X_Zs_in) 
 
             all_y_Zs_in = open(input_folder + 'all_y_Zs.pickle', 'rb')
             all_y_Zs = pickle.load(all_y_Zs_in) 
 
             X_test = all_X_Zs
             y_test = all_y_Zs
-            # elev_fp = all_elev_fp
             print('shape of X_test, y_test when predicMo is true ' + str((X_test.shape,y_test.shape)))
-            exit(-1)
-
         else:
             X_train = X_hatZs[:-28, :]
             X_test = X_hatZs[-28:, :]
@@ -816,6 +807,6 @@ if __name__ == '__main__':
  
         print('shape of X_test, y_test'+ str((X_test.shape, y_test.shape)))
 
-    predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, elev_fp, args.crossValFlag, args.SEED, args.numMo, \
+    predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo, \
         args.useSimData, args.grid, args.predicMo, args.poly_deg, args.indivError, args.index_Xaxis)
          

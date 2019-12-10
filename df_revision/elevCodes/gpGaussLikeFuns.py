@@ -314,7 +314,7 @@ def log_py_giv_par(theta, X, y, OMEGA = 1e-6):
 
     return log_like
 
-def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, elev_fp, crossValFlag = False,  SEED=None, numMo = None, useSimData =False, grid= False, \
+def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, crossValFlag = False,  SEED=None, numMo = None, useSimData =False, grid= False, \
     predicMo = False, a_bias_poly_deg = 2, gp_deltas_modelOut = True, withPrior= False, rbf = True, OMEGA = 1e-6):
     theta = np.array(theta)
     if rbf:
@@ -367,18 +367,20 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 
     mu_train = np.zeros(len(y_train))
 
+    elev_fp = np.array([X_tildZs[i][0, 2] for i in range(len(y_tildZs))])
+
     if a_bias_poly_deg ==2:
-        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i][:,:2], axis=0) for i in range(len(y_tildZs))])
         n_row = X_tildZs_mean.shape[0]
         tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
         X_tildZs_mean_extend = np.hstack((elev_fp.reshape(len(elev_fp),1), X_tildZs_mean, tmp0))
         mu_tildZs = np.dot(X_tildZs_mean_extend, a_bias_coefficients)
     else:
-        X_tildZs_mean = np.array([np.mean(X_tildZs[i], axis=0) for i in range(len(y_tildZs))])
+        X_tildZs_mean = np.array([np.mean(X_tildZs[i][:, :2], axis=0) for i in range(len(y_tildZs))])
         n_row = X_tildZs_mean.shape[0]
         tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
         X_tildZs_mean_extend0 = np.hstack((X_tildZs_mean, tmp0))
-        tmp1 = np.array([X_tildZs[i]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
+        tmp1 = np.array([X_tildZs[i][:, :2]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
         tmp1 = np.array([np.mean(tmp1[i], axis =0) for i in range(len(y_tildZs))])
         tmp2 = np.array([X_tildZs[i][:,0] * X_tildZs[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
         tmp2 = np.array([np.mean(tmp2[i]) for i in range(len(y_tildZs))])
@@ -439,7 +441,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     
     LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
     for i in range(ntest):
-        K_star_star[i] = cov_matrix(X_test[i].reshape(1, 2), np.exp(log_sigma_Zs), np.exp(log_phi_Zs))
+        K_star_star[i] = cov_matrix(X_test[i].reshape(1, X_train.shape[1]), np.exp(log_sigma_Zs), np.exp(log_phi_Zs))
     
     vstar = K_star_star - np.sum(LKstar**2, axis=0).reshape(ntest,1) 
     vstar[vstar < 0] = 1e-9
@@ -539,7 +541,7 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
 # The following code is for Zhat | Zhat, Ztilde
     LKstar = linalg.solve_triangular(l_chol_C, K_star.T, lower = True)
     for i in range(ntest):
-        K_star_star[i] = cov_matrix(X_test[i].reshape(1, 2), np.exp(log_sigma_Zs), np.exp(log_phi_Zs))
+        K_star_star[i] = cov_matrix(X_test[i].reshape(1, X_train.shape[1]), np.exp(log_sigma_Zs), np.exp(log_phi_Zs))
     
     vstar = K_star_star - np.sum(LKstar**2, axis=0).reshape(ntest,1) 
     vstar[vstar < 0] = 1e-9
@@ -581,23 +583,25 @@ def predic_gpRegression(theta, X_train, y_train, X_test, y_test, X_tildZs, y_til
     y_test = y_tildZs
     index = np.arange(len(y_test))
 
+    elev_fp = np.array([X_test[i][0, 2] for i in range(len(y_tildZs))])
+  
     if a_bias_poly_deg ==2:
-        X_test_mean = np.array([np.mean(X_test[i], axis=0) for i in range(len(y_tildZs))])
+        X_test_mean = np.array([np.mean(X_test[i][:,:2], axis=0) for i in range(len(y_tildZs))])
         n_row = X_test_mean.shape[0]
         tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
         X_test_mean_extend = np.hstack((elev_fp.reshape(len(elev_fp),1), X_test_mean, tmp0))
         mu_test = np.dot(X_test_mean_extend, a_bias_coefficients)
     else:
-        X_test_mean = np.array([np.mean(X_test[i], axis=0) for i in range(len(y_tildZs))])
-        n_row = X_tildZs_mean.shape[0]
+        X_test_mean = np.array([np.mean(X_test[i][:, :2], axis=0) for i in range(len(y_tildZs))])
+        n_row = X_test_mean.shape[0]
         tmp0 = np.repeat(1.,n_row).reshape(n_row,1)
         X_test_mean_extend0 = np.hstack((X_test_mean, tmp0))
-        tmp1 = np.array([X_test[i]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
+        tmp1 = np.array([X_test[i][:, :2]**2 for i in range(len(y_tildZs))]) # construct lon**2, lat**2
         tmp1 = np.array([np.mean(tmp1[i], axis =0) for i in range(len(y_tildZs))])
-        tmp2 = np.array([X_test[i][:,0] * X_test[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
+        tmp2 = np.array([X_test[i][:,0] * X_tildZs[i][:, 1] for i in range(len(y_tildZs))]) # construct lon*lat  
         tmp2 = np.array([np.mean(tmp2[i]) for i in range(len(y_tildZs))])
         tmp2 = tmp2.reshape(n_row,1)
-        X_test_mean_extend = np.hstack((elev_fp.reshape(len(elev_fp),1), tmp1, tmp2, X_test_mean_extend0))
+        X_test_mean_extend = np.hstack((elev_fp.reshape(len(elev_fp),1), tmp1, tmp2, X_tildZs_mean_extend0))
         mu_test = np.dot(X_test_mean_extend, a_bias_coefficients)
 
     # The following is  for Ztilde|Zhat ~ MVN(mu, COV`)
@@ -649,9 +653,6 @@ if __name__ == '__main__':
 
     X_hatZs_in = open(input_folder + 'X_hatZs.pkl', 'rb')
     X_hatZs = pickle.load(X_hatZs_in) 
-
-    elev_fp_in = open(input_folder + 'elev_fp.pkl', 'rb')
-    elev_fp = pickle.load(elev_fp_in) 
  
     y_hatZs_in = open(input_folder + 'y_hatZs.pkl', 'rb')
     y_hatZs = pickle.load(y_hatZs_in) 
@@ -725,6 +726,6 @@ if __name__ == '__main__':
  
         print('shape of X_test, y_test'+ str((X_test.shape, y_test.shape)))
 
-    predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, elev_fp, args.crossValFlag, args.SEED, args.numMo, \
+    predic_accuracy = predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo, \
         args.useSimData, args.grid, args.predicMo, args.poly_deg)
          
