@@ -143,19 +143,19 @@ def sim_hatTildZs_With_Plots(SEED = 204, phi_Zs = [0.8], gp_deltas_modelOut = Tr
 	gamma_density = stats.gamma.pdf(x, alpha, loc, scale)
 
 
-	# fig, ax = plt.subplots(figsize=(10, 6))
-	# ax.hist(all_y_Zs, bins=30, normed=True)
-	# ax.plot(x, nparam_density, 'r-', label='non-parametric density (smoothed by Gaussian kernel)')
-	# ax.plot(x, param_density, 'k--', label='parametric density')
-	# ax.plot(x, gamma_density, 'g-', label='gamma density')
-	# # ax.set_ylim([0, 0.15])
-	# ax.legend(loc='best')
-	# # plt.savefig(output_folder + 'gammaTransformedWithMean.png')
-	# plt.show()
-	# plt.close()
+	fig, ax = plt.subplots(figsize=(10, 6))
+	ax.hist(all_y_Zs, bins=30, normed=True)
+	ax.plot(x, nparam_density, 'r-', label='non-parametric density (smoothed by Gaussian kernel)')
+	ax.plot(x, param_density, 'k--', label='parametric density')
+	ax.plot(x, gamma_density, 'g-', label='gamma density')
+	# ax.set_ylim([0, 0.15])
+	ax.legend(loc='best')
+	plt.savefig(output_folder + 'gammaTransformedWithMean' + 'delta' + str(delta) + 'len_scale' + str(len_scale)  +'.png')
+	plt.show()
+	plt.close()
 	
 	cmap = plt.matplotlib.cm.jet
-	bounds = np.ceil(np.linspace(all_y_Zs.min(), all_y_Zs.max(), 19))
+	bounds = np.ceil(np.linspace(all_y_Zs.min(), all_y_Zs.max(), 11))
 	norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
 	plt.figure()
@@ -483,7 +483,7 @@ if __name__ == '__main__':
 		help='flag for whether deltas of model output is a GP')
 	p.add_argument('-numMo', type=int, dest='numMo', default=300, help='Number of model outputs used in modelling')
 	p.add_argument('-numObs', type=int, dest='numObs', default=300, help='Number of observations used in modelling')
-	p.add_argument('-delta', type=float, dest='delta', default=1.5, help='power of Gaussian kernel within (0, 2]')
+	p.add_argument('-delta', type=float, dest='delta', default=1.9, help='power of Gaussian kernel within (0, 2]')
 	args = p.parse_args()
 	# if args.output is None: args.output = os.getcwd()
 	# output_folder = args.output
