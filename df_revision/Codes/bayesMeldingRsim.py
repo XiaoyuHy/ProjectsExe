@@ -1019,7 +1019,71 @@ def optim_fun(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withP
         return [np.array(tmp_res['x']), tmp_res['fun'], np.array(tmp_res['hess_inv'].todense()), tmp_res['success'], tmp_res['message']]
     else:
         return [np.array(tmp_res['x']), tmp_res['fun'], np.array(tmp_res['hess_inv']), tmp_res['success'], tmp_res['message']]
-
+def optim_RndStart_BFGS(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, poly_deg, num_par, method, bounds, repeat, seed, numMo, round):
+    print('Starting the ' + str(round) + ' round of optimisation in optim_RndStart_BFGS')
+    count = 0
+    res = []
+    while count != repeat:
+        try:#find one intial value for which the optimisation works
+            if gpdtsMo:
+                initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 3.5, 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 3.5, 1)), \
+                np.log(np.random.gamma(1., np.sqrt(num_par), num_par)),  np.zeros(4 + poly_deg -2)), axis=0)  
+                # initial_theta = np.array([2.84165709, -0.32334302,  1.31136631,  5.96299062, -7.29752516,  0.81010198, -0.52785488,  0.63124765, -2.55814163])
+            else:
+                initial_theta=np.concatenate((np.log(np.random.gamma(1.2, 5., 1)), np.log(np.random.gamma(1., np.sqrt(num_par), num_par)), \
+                np.log(np.random.gamma(1.2, 1./0.6, 1)), np.log(np.random.gamma(1.2, 5., 1)), np.zeros(4 + poly_deg -2)), axis=0)
+            print('initial theta in optim_RndStart_BFGS :' + str(initial_theta))
+            if useGradsFlag:
+                tmp_res = minimize(fun=minus_log_obsZs_giv_par_with_grad, 
+                                   x0=initial_theta, method='BFGS',
+                                   jac=True,
+                                   args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior, poly_deg),
+                                   options={'maxiter': 2000, 'disp': False})
+            else:
+                tmp_res = minimize(fun=minus_log_obsZs_giv_par, 
+                               x0=initial_theta, method=method,
+                               jac=False, bounds = bounds,
+                               args=(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, withPrior, poly_deg),
+                               options={'maxiter': 2000, 'disp': False})
+            print('The ' + str(count) + ' repeat of optimisation in optim_RndStart_BFGS')
+        except:
+            continue
+        if tmp_res['fun'] is not None: # if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
+            temp_res = [tmp_res['x'], np.copy(tmp_res['fun']), np.copy(tmp_res['hess_inv']), np.copy(tmp_res['success']), \
+            np.copy(tmp_res['message']), np.copy(tmp_res['nit'])]
+            res.append(temp_res)
+            print('theta from the ' + str(count) + ' repeat of optimisation with BFGS is ' + str(tmp_res['x']))
+            logPosat_resOptim, grads_at_resOptim = log_obsZs_giv_par_with_grad(tmp_res['x'], X_hatZs, y_hatZs, X_tildZs, y_tildZs, \
+                 gpdtsMo,  withPrior, poly_deg)
+            print('grads at theta from the ' + str(count) + ' repeat of optimisation with BFGS is ' + str(grads_at_resOptim))
+            flag_grads_equal_zero = np.round(grads_at_resOptim, 2) == 0.
+            # if gradients from the BFGS optimisation is zero, break out of the loop
+            tmp = np.diag(np.array(tmp_res['hess_inv']))
+            variance_log_covPars = tmp[:-4]
+            print('np.max(np.abs(variance_log_covPars)) in optim_RndStart -firstPart is ' + str(np.max(np.abs(variance_log_covPars))))
+            if np.sum(flag_grads_equal_zero) == len(flag_grads_equal_zero) :
+                print('BFGS optmisation converged successfully at the '+ str(count) + ' round of optimisation.')
+                print('minus_log_like for repeat ' + str(count)+ ' with BFGS is ' + str(tmp_res['fun']))
+                print('parameters after optimisation with BFGS :'  + str([np.exp(np.array(tmp_res['x'])[:-(4 + poly_deg -2)]), np.array(tmp_res['x'])[-(4 + poly_deg -2):]]))
+                print('covariance of pars after optimisation with BFGS :'  + str(np.array(tmp_res['hess_inv'])))
+                print('Optim status withPrior is ' + str(withPrior) + \
+                ' & gpdtsMo is ' + str(gpdtsMo) + ' with BFGS :'  + str(np.array(tmp_res['success'])))
+                print('Optim message withPrior with BFGS :'  + str(np.array(tmp_res['message'])))
+              
+                count += 1
+            else:
+                continue        
+        else:# if log pos at optimisation is not None, record the resutls, else, redo the otpmisation
+            continue 
+ 
+    res = np.array(res)
+    res = res.T
+    print('minus_log_like for repeat ' + str(repeat) + ' is ' + str(res[1, :]))
+    i = np.argmin(res[1,:])
+    print('parameters after optimisation with BFGS is ' + str([np.exp(np.array(res[0, :][i])[:-(4 + poly_deg -2)]), np.array(res[0, :][i])[-(4 + poly_deg -2):]]))
+    
+    return [np.array(res[0, :][i]), np.array(res[1, :][i]), np.array(res[2, :][i]), np.array(res[3, :][i]), np.array(res[4, :][i])]
 
 def optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat, seed, numMo, round):
     print('Starting the ' + str(round) + ' round of optimisation in optim_RndStart')
@@ -1193,7 +1257,7 @@ def optim_NotRndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFla
                 break
         return [mu, log_like, cov, status, message]
 
-def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, useGradsFlag = False, repeat=3, seed =188, numMo =50, rounds =1, method='L-BFGS-B', rbf=True, OMEGA = 1e-6, \
+def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, poly_deg, gpdtsMo=False, useGradsFlag = False, repeat=3, seed =188, numMo =50, rounds =1, method='L-BFGS-B', rbf=True, OMEGA = 1e-6, \
     bounds = ((-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-2.3, 4.6), (-50, 50), (-50, 50), (-50, 50), (-50, 50))): 
     print('starting optimising when withPrior is ' + str(withPrior) + ' & gpdtsMo is ' + str(gpdtsMo) + \
          '& useGradsFlag is ' + str(useGradsFlag))
@@ -1206,10 +1270,10 @@ def optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, withPrior, gpdtsMo=False, use
     else:
         num_par=X_hatZs.shape[1]  
     res = []
-    if numMo == 50:
+    if numMo == numMo:
         # rounds =2
         for round in range(rounds):
-            res_tmp = optim_RndStart(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, num_par, method, bounds, repeat,seed, numMo, round)
+            res_tmp = optim_RndStart_BFGS(X_hatZs, y_hatZs, X_tildZs, y_tildZs, gpdtsMo, useGradsFlag, withPrior, poly_deg, num_par, method, bounds, repeat,seed, numMo, round)
             # print 'res_tmp is ' + str(res_tmp)
             res.append(res_tmp)
         res = np.array(res)
@@ -1301,7 +1365,7 @@ if __name__ == '__main__':
     # check_grads()
     # exit(-1)
     p = argparse.ArgumentParser()
-    p.add_argument('-SEED', type=int, dest='SEED', default=200, help='The simulation index')
+    p.add_argument('-SEED', type=int, dest='SEED', default=204, help='The simulation index')
     p.add_argument('-repeat', type=int, dest='repeat', default=1, help='number of repeats in optimisation')
     p.add_argument('-o', type=str, dest='output', default=None, help='Output folder')
     p.add_argument('-withPrior', dest='withPrior', default=False,  type=lambda x: (str(x).lower() == 'true'), help='flag for ML or MAP')
@@ -1329,10 +1393,12 @@ if __name__ == '__main__':
     p.add_argument('-usecntryFlag', dest='usecntryFlag', default=True,  type=lambda x: (str(x).lower() == 'true'), \
         help='flag for whether to use data for a specific country')
     p.add_argument('-numObs', type=int, dest='numObs', default=200, help='Number of observations used in modelling')
-    p.add_argument('-numMo', type=int, dest='numMo', default=50, help='Number of model outputs used in modelling')
+    p.add_argument('-numMo', type=int, dest='numMo', default=300, help='Number of model outputs used in modelling')
     p.add_argument('-crossValFlag', dest='crossValFlag', default=False,  type=lambda x: (str(x).lower() == 'true'), \
         help='whether to validate the model using cross validation')
     p.add_argument('-idxFold', type=int, dest='idxFold', default=9, help='the index for the fold for cross validation')
+    p.add_argument('-predicMo', dest='predicMo', default=True,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether to predict the value where model outputs are produced')
+    p.add_argument('-grid', dest='grid', default=False,  type=lambda x: (str(x).lower() == 'true'),  help='flag for whether the predictions are produced for each grid')
     args = p.parse_args()
     if args.output is None: args.output = os.getcwd()
     if args.useSimData:  
@@ -1401,8 +1467,8 @@ if __name__ == '__main__':
                 y_tildZs_in = open(input_folder + 'y_tildZs.pkl', 'rb')
                 y_tildZs = pickle.load(y_tildZs_in)
 
-                areal_hatZs_in = open(input_folder + 'areal_hatZs.pkl', 'rb')
-                areal_hatZs = pickle.load(areal_hatZs_in)
+                # areal_hatZs_in = open(input_folder + 'areal_hatZs.pkl', 'rb')
+                # areal_hatZs = pickle.load(areal_hatZs_in)
     else:
         X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_hatZs = ldNetCDF.loadNetCdf(SEED = args.SEED)
 
@@ -1425,7 +1491,7 @@ if __name__ == '__main__':
             res = Gibbs_sampler(X_hatZs, y_hatZs, X_tildZs, y_tildZs, areal_hatZs)
             mu, cov = res.sampler(args.withPrior, args.onlyOptimCovPar, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED)
         else:
-            mu, cov = optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED, args.numMo)
+            mu, cov = optimise(X_hatZs, y_hatZs, X_tildZs, y_tildZs, args.withPrior, args.poly_deg, args.gpdtsMo, args.useGradsFlag, args.repeat, args.SEED, args.numMo)
 
     end = default_timer()
     print('running time for optimisation using simData is ' + str(args.useSimData) + ' :' + str(end - start) + ' seconds')
@@ -1501,7 +1567,8 @@ if __name__ == '__main__':
 
         X_test = all_X_Zs
         y_test = all_y_Zs
-        predic_accuracy = gpGaussLikeFuns.predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, args.SEED, args.numMo, args.useSimData)
+        predic_accuracy = gpGaussLikeFuns.predic_gpRegression(mu, X_train, y_train, X_test, y_test, X_tildZs, y_tildZs, args.crossValFlag, \
+            args.SEED, args.numMo, args.useSimData, args.grid, args.predicMo)
     else:
     #     res = {'mu':mu, 'cov':cov, 'pars':pars,'upper_interval':upper_interval, 'lower_interval':lower_interval, \
     # 'upper_interval_rounded':upper_interval_rounded, 'lower_interval_rounded':lower_interval_rounded}
